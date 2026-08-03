@@ -86,6 +86,8 @@ Figma 공식 `implement-design` 스킬의 7-Step 구조를 베이스로, 네이�
 2. Figma Desktop 앱 실행
 3. 우측탭 > mcp 활성화
 
+<img width="454" alt="Figma Desktop 앱의 Desktop MCP server settings — Enabled 토글" src="docs/images/figma-desktop-mcp-setting.png">
+
 ### 2단계: Figma Personal Access Token 설정
 
 에셋 다운로드에 필요합니다:
