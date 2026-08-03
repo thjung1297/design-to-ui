@@ -207,3 +207,9 @@ QA가 FAIL이면 Phase 2a를 **새로운 서브에이전트로 1회 재spawn**�
 - **QA Agent FAIL을 경고 없이 통과 금지** (두 모드 공통)
 - **`design_context`를 서브에이전트에 위임해 "요약" 받지 않음**
 - **Phase 2 테이블에 없는 파일·요소를 "함께 정리" 명목으로 수정 금지**
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

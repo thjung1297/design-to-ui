@@ -39,3 +39,9 @@ argument-hint: <figma_link>
 
 > 푸시 완료. 빌드 돌려서 변경 사항을 확인해주세요.
 > 피그마에서 더 수정하시려면 다시 `/figma-apply {figma_link}`를, 개발자에게 전달하시려면 `/handoff`를 실행해주세요.
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

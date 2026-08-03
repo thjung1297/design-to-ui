@@ -150,3 +150,9 @@ design-to-ui·design-qa로 작업하다 **세션 중 나온 것**(막힘→해�
 | `createDiscussion` 권한 오류 | 토큰 스코프(`repo` 또는 `write:discussion`) 확인 안내 |
 | 사용자가 등록 거절 | 등록하지 않고 종료 (초안만 남김) |
 | 핸드오프 코멘트 실패/거절 | discussion 본문은 유효 — 코멘트만 재시도 안내하거나 건너뜀 |
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

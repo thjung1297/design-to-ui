@@ -113,3 +113,9 @@ Step 1~3 결과를 종합하여 `.claude/skills/project-design-system/SKILL.md` 
 - **등록 전 본문을 사용자에게 보여주고 최종 확인**한다 (discussion 스킬 Step 4)
 
 등록되면 URL과 함께 감사 인사를 전한다.
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

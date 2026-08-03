@@ -140,3 +140,9 @@ walk(node):
 ## Related
 
 - **design-to-ui** — Step 5에서 이 스킬의 `download_figma_frame_images.sh`로 다운로드 후, `convert_assets.sh`로 Android 리소스 변환
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

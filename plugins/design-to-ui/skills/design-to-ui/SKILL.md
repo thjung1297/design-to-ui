@@ -273,3 +273,9 @@ Step 2의 React 컴포넌트 계층·Tailwind 수치를 그대로 네이티브 �
 플랫폼 reference에 추가 검증 항목이 있으면 함께 수행한다.
 
 ---
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

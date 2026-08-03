@@ -138,3 +138,9 @@ variant·실행 타겟·platform) + (선택) **집중 영역 힌트**. design-qa
 반환: 코드 오차 확정 리스트(분류 포함) + `OVERLAY-REPORT.md` 경로. 위임 보정의 리포트에 담을 것: 페어 메타
 (크기·resize_ratio) / 영역별 정합 표(영역·figma·real·판정·근거) / **잔여차를 코드 오차 vs 환경 아티팩트로 분리** /
 (반복 시) 라운드별 요약 / blind-spot ledger 결과.
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->

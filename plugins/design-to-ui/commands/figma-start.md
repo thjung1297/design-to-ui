@@ -134,3 +134,9 @@ start`, iOS: `xcodebuild` → `simctl launch`). 모듈·variant·스킴이 불�
 > (기존 `…/1234` 에서 이어서 진행합니다 — 이전 검수 커밋 3개가 그대로 있습니다.)
 > (새로 시작을 선택하셔서 `…/1234-3` 을 만들었습니다.)
 > (실행할 기기가 없어 resizable 에뮬레이터 `figma-qa-resizable` 을 새로 만들었습니다 — 폰·폴더블·태블릿을 이 하나로 전환해 볼 수 있습니다.)
+
+<!--
+Design-To-UI
+Copyright (c) 2026-present NAVER Corp.
+Apache-2.0
+-->
