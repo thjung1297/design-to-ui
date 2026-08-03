@@ -1,0 +1,84 @@
+name: Bump Plugin Version
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  bump:
+    runs-on: self-hosted
+    # 자기 자신의 bump 커밋으로 다시 트리거되지 않도록 방지
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # main 브랜치 보호(require-PR) 우회를 위해 write 권한 deploy key(SSH)로 체크아웃.
+          # 레포 시크릿 BUMP_DEPLOY_KEY 에 deploy key 개인키를 등록하고,
+          # 룰셋 Bypass list 에 "Deploy keys" 를 추가해 두세요. 그러면 이 키로
+          # 인증된 push 가 require-PR 룰을 우회합니다.
+          ssh-key: ${{ secrets.BUMP_DEPLOY_KEY }}
+          ssh-strict: false
+          fetch-depth: 0
+
+      - name: Find merged PR and version label
+        id: pr
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+
+            // 이 커밋과 연결된 PR 찾기
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: sha
+            });
+
+            const merged = prs.find(p => p.merged_at);
+            if (!merged) {
+              core.info('머지된 PR 없음 → 스킵');
+              core.setOutput('bump', '');
+              return;
+            }
+
+            core.info(`PR #${merged.number}: ${merged.title}`);
+
+            // version 라벨 확인 (major > minor > patch 우선순위)
+            const labels = merged.labels.map(l => l.name).filter(n => n.startsWith('version:'));
+            let bump = '';
+            if (labels.includes('version:major')) bump = 'major';
+            else if (labels.includes('version:minor')) bump = 'minor';
+            else if (labels.includes('version:patch')) bump = 'patch';
+
+            core.info(`라벨: ${JSON.stringify(labels)} → bump: ${bump || '없음'}`);
+            core.setOutput('bump', bump);
+
+      - name: Bump version
+        if: steps.pr.outputs.bump != ''
+        run: |
+          NEW_VERSION=$(bash scripts/bump-version.sh "${{ steps.pr.outputs.bump }}")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Bumped to $NEW_VERSION"
+
+      - name: Commit and push
+        if: steps.pr.outputs.bump != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plugins/design-to-ui/.claude-plugin/plugin.json .claude-plugin/marketplace.json
+          git commit -m "chore: bump plugin version to ${NEW_VERSION} [skip ci]"
+
+          # 동시 머지 시 push 경합 방지: rebase 후 push, 실패 시 최대 3회 재시도
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "push 성공 (시도 ${i}/3)"
+              exit 0
+            fi
+            echo "push 실패, 재시도 ${i}/3"
+            sleep 3
+          done
+          echo "push 최종 실패"
+          exit 1

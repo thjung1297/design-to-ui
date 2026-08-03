@@ -1,0 +1,67 @@
+labels: ["gotcha"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        gotcha 제보 감사합니다!
+        검증과정 & 결과 공유 후, 바로 PR로 올려주시고 링크를 연결해주셔도 좋습니다.
+        (개선을 시도해보지 않으신 경우는 **Ideas** 또는 **Show & Tell**로 등록해주세요)
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: 사용 모델
+      options:
+        - Opus 4
+        - Sonnet 4
+        - Haiku
+    validations:
+      required: true
+
+  - type: textarea
+    id: situation
+    attributes:
+      label: 상황
+      description: 어떤 화면/컴포넌트를 변환하려 했나요?
+      placeholder: "Figma에서 gradient가 포함된 배경을 변환했는데..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 기대와 다르게 동작한 점
+      placeholder: "LinearGradient 대신 단색 Background로 변환됨"
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: 시도해본 것
+      description: |
+        프롬프트 추가로 해결했거나, SKILL.md를 직접 수정해서 해결한 경험을 공유해주세요.
+        3개 이상의 화면에서 3번 이상씩 변환해 봤을 때 기존 스킬보다 우수한지도 확인해주세요. (컨텍스트 오염 주의)
+      placeholder: |
+        - "gradient는 Brush.linearGradient()로 변환해" 프롬프트를 추가하니 해결됨
+        - SKILL.md의 Step 6 변환 규칙에 gradient 케이스를 추가해봤더니 일관되게 동작함
+        - 3개 이상의 화면에서 3번 이상씩 변환해 봤을 때 기존 스킬보다 우수
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 반영 희망 사항
+      placeholder: "스킬에 gradient 변환 규칙 추가"
+    validations:
+      required: false
+
+  - type: input
+    id: pr-link
+    attributes:
+      label: PR 링크 (있다면)
+      placeholder: "https://github.com/naver/design-to-ui/pull/..."
+    validations:
+      required: false

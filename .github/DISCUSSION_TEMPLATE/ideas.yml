@@ -1,0 +1,27 @@
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        아이디어 감사합니다!
+        issue에 'enhancement' 라벨을 달아 액션아이템을 관리중입니다.
+        이미 있는 액션아이템과 연결되는 경우, 해당 issue 링크를 함께 남겨주세요.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: 아이디어
+      description: 어떤 개선이나 기능을 제안하시나요?
+      placeholder: |
+        - "이런 경우에도 지원되면 좋겠다"
+        - "이 워크플로우 단계를 이렇게 바꾸면 어떨까"
+    validations:
+      required: true
+
+  - type: input
+    id: related-issue
+    attributes:
+      label: 관련 issue (있다면)
+      placeholder: "https://github.com/naver/design-to-ui/issues/..."
+    validations:
+      required: false

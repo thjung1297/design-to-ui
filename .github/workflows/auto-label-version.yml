@@ -1,0 +1,55 @@
+name: Auto Label Version
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  label:
+    # fork에서 온 PR은 self-hosted 러너에서 실행하지 않음 (public 레포 보안)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: self-hosted
+    steps:
+      - name: Auto-assign version label
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            // 이미 version 라벨이 있으면 스킵 (수동 지정 존중)
+            const hasVersionLabel = pr.labels.some(l => l.name.startsWith('version:'));
+            if (hasVersionLabel) {
+              core.info('version 라벨이 이미 있음 → 스킵');
+              return;
+            }
+
+            // PR 변경 파일 목록 조회
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner, repo, pull_number: pr.number, per_page: 100
+            });
+
+            // skills/ 하위에 새 파일이 추가되었으면 minor, 아니면 patch
+            const hasNewSkillFile = files.some(f =>
+              f.status === 'added' && f.filename.includes('/skills/')
+            );
+            const label = hasNewSkillFile ? 'version:minor' : 'version:patch';
+
+            core.info(`변경 파일 ${files.length}개 분석 → ${label}`);
+
+            // 라벨이 레포에 없으면 생성
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (e) {
+              const colors = { 'version:patch': 'FEF3C7', 'version:minor': 'BFDBFE', 'version:major': 'FECACA' };
+              await github.rest.issues.createLabel({ owner, repo, name: label, color: colors[label] });
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr.number, labels: [label]
+            });

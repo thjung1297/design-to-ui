@@ -1,0 +1,12 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        스킬 사용 후기, 참고할 만한 커뮤니티 스킬/동향, 유용한 팁 등 자유롭게 공유해주세요.
+
+  - type: textarea
+    id: content
+    attributes:
+      label: 공유 내용
+    validations:
+      required: true

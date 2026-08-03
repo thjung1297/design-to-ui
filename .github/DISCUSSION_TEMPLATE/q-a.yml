@@ -1,0 +1,8 @@
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: 질문
+      description: 스킬 설치/설정, UI 패턴 변환, 스킬 커스텀/fork 등 무엇이든 편하게 질문해주세요.
+    validations:
+      required: true

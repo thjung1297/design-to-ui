@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# design-qa 실행 산출물 (캡처·오버레이 결과는 휘발)
+out/

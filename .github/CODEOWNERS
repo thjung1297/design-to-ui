@@ -1,0 +1,4 @@
+# Code owners for this repository (project maintainers).
+# Used together with the "Require review from Code Owners" branch protection rule:
+# a review from one of these owners is required before merging.
+* @seochaeyeoni @naryuko
