@@ -28,11 +28,11 @@ argument-hint: (인자 없음)
 
 ### 2. Dev PR 확인
 
-현재 브랜치는 `design/{github_id}/{project_name}/{dev_pr_number}[-N]` 꼴이므로, **dev PR 번호를 브랜치에서 바로
+현재 브랜치는 `design/{github_id}/{dev_pr_number}[-N]` 꼴이므로, **dev PR 번호를 브랜치에서 바로
 읽는다.** 이름으로 dev 브랜치를 역추측하지 않는다.
 
 - **마지막 세그먼트**를 PR 번호로 읽는다. 끝에 `-N`이 붙어 있으면 `/figma-start`가 붙인 충돌 회피 접미사이므로
-  떼고 앞의 숫자를 쓴다 (`…/weather-app/1234-2` → PR **1234**). PR 번호는 순수 숫자라 이 분해에 모호함이 없다.
+  떼고 앞의 숫자를 쓴다 (`design/chaeyeon-seo/1234-2` → PR **1234**). PR 번호는 순수 숫자라 이 분해에 모호함이 없다.
 - 그 번호로 dev PR을 직접 조회해 **head 브랜치와 author를 확정**한다. 이 head 브랜치가 design PR의 base다.
 - 조회 실패 시 에러에 **다음 액션**을 명시:
   - **PR이 없음/삭제됨**: "dev PR #{번호}를 찾을 수 없습니다. 개발자에게 PR 상태를 확인해주세요."
@@ -93,9 +93,17 @@ PR이 이미 생성된 상태에서 리뷰어를 추가로 시도합니다. 실�
 ### 5. PR 링크 출력 + 브라우저로 열기
 
 - 채팅창에 PR URL 출력
-- **이어서 PR을 웹 브라우저로 띄운다.** handoff 직후 디자이너가 하는 일은 본문·리뷰어가 제대로 붙었는지 눈으로
-  확인하는 것이라, 링크를 복붙하는 단계를 없앤다. 열기에 실패해도 그냥 무시하고 아래 안내는 그대로 출력한다 —
-  PR은 이미 만들어져 있다.
+- **이어서 PR을 브라우저 새 창으로 띄운다.** 기존 창 탭으로 열면 디자이너가 인지하지 못한다.
+  ```bash
+  BUNDLE=$(defaults read com.apple.LaunchServices/com.apple.launchservices.secure \
+    | grep -B1 'LSHandlerURLScheme = https' | grep LSHandlerRoleAll | sed 's/.*= "\{0,1\}\([^";]*\).*/\1/')
+  APP=$(basename "$(osascript -e "POSIX path of (path to application id \"$BUNDLE\")")" .app)
+  open -na "$APP" --args --new-window "{PR_URL}" || open "{PR_URL}"   # 뒤는 Safari 등 미지원·실패 폴백
+  ```
+  `-b "$BUNDLE"` 로 번들 ID를 직접 넘기면 `--new-window` 가 무시되고 탭으로 붙는다(실측). 앱 **이름**으로 넘긴다.
+  Windows `start "" "{PR_URL}"` · Linux `xdg-open "{PR_URL}"`.
+- **결과를 한 줄로 알린다. 조용한 실패 금지** — 새 창 성공 / 탭으로 폴백 / 실패(위 링크 클릭 안내) 중 하나를 찍는다.
+  열기 실패는 중단 사유가 아니다(PR은 이미 있다).
 - 리뷰어 지정 결과에 따라 안내 메시지 분기:
   - **리뷰어 지정 성공**:
     > 개발자 {reviewer}에게 리뷰 요청이 전송되었습니다. 이후 반영은 해당 PR에서 진행됩니다.

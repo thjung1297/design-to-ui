@@ -11,10 +11,17 @@ body:
     id: model
     attributes:
       label: 사용 모델
+      description: |
+        `/status` 나 `/model` 로 확인할 수 있습니다.
+        목록에 없으면 **기타**를 고르고 상황란에 모델명을 적어주세요 — 가장 가까운 값으로 고르지 마세요.
       options:
-        - Opus 4
-        - Sonnet 4
-        - Haiku
+        - Opus 5
+        - Sonnet 5
+        - Haiku 4.5
+        - Fable 5
+        - Opus 4 계열 (4.5 / 4.7 / 4.8 …)
+        - Sonnet 4 계열
+        - 기타 (상황란에 기재)
     validations:
       required: true
 

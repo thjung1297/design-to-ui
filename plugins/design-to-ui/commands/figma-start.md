@@ -1,5 +1,5 @@
 ---
-description: dev PR 기반 프로젝트 클론 + design/* 브랜치 생성·체크아웃 + 빌드·실행까지. 디자이너 검수 시작용 (커밋 없음).
+description: dev PR 기반 프로젝트 클론 + design/* 브랜치 생성·체크아웃 + 커밋 이력 패널 + 빌드·실행까지. 디자이너 검수 시작용 (커밋 없음).
 license: Apache-2.0
 argument-hint: <dev_pr_link>
 ---
@@ -9,6 +9,7 @@ argument-hint: <dev_pr_link>
 디자이너가 개발자의 원본 PR 위에서 검수를 시작할 때 호출하는 커맨드입니다.
 **PR 링크 하나만 주면 프로젝트 클론부터 합니다** — 검수할 프로젝트를 미리 받아둘 필요가 없습니다.
 브랜치 생성·체크아웃 후 **빌드해서 기기에 올려 화면까지 띄워줍니다** — 실행할 기기·에뮬레이터가 없으면 검수에 맞는 걸 설치해서 만듭니다.
+**그 브랜치의 커밋 이력 패널도 개발툴에 띄워줍니다** — 지금까지 반영한 검수 내용을 검수 내내 옆에 두고 볼 수 있습니다.
 **커밋·푸시는 하지 않습니다.** 디자이너가 화면을 먼저 확인한 뒤, 필요하면 `/figma-apply`로 피그마 변경을 반영합니다.
 
 ## 사용 예시
@@ -30,17 +31,19 @@ argument-hint: <dev_pr_link>
 - 현재 디렉터리의 `origin`이 PR의 `{owner}/{repo}`와 같으면 그대로 쓴다. 다르면 `~/{repo}`, `~/git/{repo}`, `~/AndroidStudioProjects/{repo}` 에서 **같은 origin인 클론을 먼저 찾고**(중복 클론 방지), 없으면 `~/{repo}` 에 클론한다 — 시간이 걸리니 경로를 먼저 한 줄 알린다. 클론 실패(GitHub 인증 등)면 중단하고 안내한다.
 - 확보한 경로를 `PROJECT_DIR`로 두고, **이후 모든 git·빌드 명령은 이 경로 기준**(`cd {PROJECT_DIR} && …` 또는 `git -C {PROJECT_DIR} …`)으로 실행한다. 세션의 시작 폴더가 프로젝트가 아니어도 **디자이너에게 세션 재시작·재실행을 요구하지 않는다** — 경로를 알고 있으면 그대로 진행할 수 있다. 파일 읽기·수정에 접근 권한이 필요하면 `/add-dir {PROJECT_DIR}` 로 확보한다.
 - 다음 커맨드가 세션이 바뀌어도 이 프로젝트를 찾을 수 있게 경로를 남긴다: `PROJECT_DIR` 을 `~/.design-to-ui/current-project` 에 기록(디렉터리 없으면 생성, 한 줄 덮어쓰기).
-- 프로젝트를 IDE로도 열어준다 — 디자이너가 코드·프리뷰·Terminal 패널을 쓴다. gradle 파일이 있으면 `open -a "Android Studio" {PROJECT_DIR}`, `*.xcworkspace`(우선)/`*.xcodeproj` 가 있으면 `open {해당 경로}`. **IDE 실행 실패는 중단 사유가 아니다** — 빌드는 3단계에서 CLI로 하므로, 경로만 알리고 계속 진행한다.
+- 프로젝트를 개발툴로도 열어준다 — 디자이너가 코드·프리뷰·Terminal 패널을 쓰고, 2c에서 커밋 이력 패널도 여기에 띄운다. gradle 파일이 있으면 `open -a "Android Studio" {PROJECT_DIR}`, `*.xcworkspace`(우선)/`*.xcodeproj` 가 있으면 `open {해당 경로}`. 둘 다 아니거나 디자이너가 다른 툴을 쓰고 있으면 `open -a "{앱 이름}" {PROJECT_DIR}` 로 그 툴에 연다. **무엇으로 열었는지(앱 이름)를 기억해 둔다** — 2c가 그 툴 기준으로 동작한다. **개발툴 실행 실패는 중단 사유가 아니다** — 빌드는 3단계에서 CLI로 하므로, 경로만 알리고 계속 진행한다.
 
 ### 2. 브랜치 준비
 
-- 브랜치명 규약: **`design/{github_id}/{project_name}/{dev_pr_number}`**
+- 브랜치명 규약: **`design/{github_id}/{dev_pr_number}`**
   - 예: `https://github.com/my-org/weather-app/pull/1234` 를 `my-id` 가 검수
-    → `design/my-id/weather-app/1234`
+    → `design/my-id/1234`
   - `design/` prefix는 그대로 유지한다 — `/figma-apply`·`figma-diff-apply`가 이 prefix로 "지금 검수 중인
     브랜치"를 판별한다.
-  - `{project_name}`·`{dev_pr_number}`는 1단계에서 받은 **PR URL에서 그대로 파싱**한다(추가 조회 불필요).
-  - `{github_id}`는 생략 불가. `gh api user --jq .login`으로 얻고, 얻지 못하면 임의로 짓지 말고
+  - **프로젝트명은 넣지 않는다** — 브랜치는 그 프로젝트 레포 안에만 존재하므로 이름에 또 적어도 구분되는 게
+    없다. 한 레포 안에서 PR 번호는 유일하고, 사람 구분은 `{github_id}`가 한다.
+  - `{dev_pr_number}`는 1단계에서 받은 **PR URL에서 그대로 파싱**한다(추가 조회 불필요).
+  - `{github_id}`는 생략 불가. `GH_HOST=<PR 호스트> gh api user --jq .login`으로 얻고, 얻지 못하면 임의로 짓지 말고
     중단하고 `gh auth login`을 안내한다 — 같은 dev PR을 여러 사람이 검수할 수 있어서, 소유자가 브랜치명에 없으면
     남의 검수 브랜치를 덮어쓰거나 남의 것을 자기 것으로 오인한다.
 
@@ -65,23 +68,56 @@ argument-hint: <dev_pr_link>
    dev 브랜치 이후 쌓인 `/figma-apply` 커밋만 뽑힌다. 커밋 **제목은 `design: figma-apply {node_id} 반영`으로
    내용이 없고 본문(`%b`)에 디자이너가 입력한 프롬프트와 변경 테이블이 들어 있으니**, 본문을 읽어 사람이 알아볼
    말로 요약한다(node id 나열 ❌). 원격만 있으면 `git fetch origin {후보}` 후 조회한다.
+   **dev 브랜치가 이미 머지·삭제됐으면 `--not origin/{dev_branch}` 가 `fatal: unknown revision` 으로 죽는다** —
+   `git rev-parse --verify -q origin/{dev_branch}` 로 먼저 확인하고, 없으면 `--not` 없이 최근 커밋만 뽑는다.
 2. 요약과 함께 선택지를 제시하고, **답을 받기 전에는 브랜치를 만들지도 체크아웃하지도 않는다:**
 
-   > `design/my-id/weather-app/1234` 에 이미 검수 작업이 있습니다 (마지막 2026-07-26, 커밋 3개)
+   > `design/my-id/1234` 에 이미 검수 작업이 있습니다 (마지막 2026-07-26, 커밋 3개)
    > - 리스트 항목 ↔ 서브정보 간격 정합
    > - 뒤로 셰브론 크기 정합
    >
-   > `design/my-id/weather-app/1234-2` (마지막 2026-07-27, 커밋 1개)
+   > `design/my-id/1234-2` (마지막 2026-07-27, 커밋 1개)
    > - 상단 탭 색 토큰 교체
    >
    > 어떻게 진행할까요?
    > 1. 위 브랜치 중 하나에서 **이어서** 검수 — 번호(또는 브랜치명)를 알려주세요
-   > 2. dev PR #1234 기준으로 **새로 시작** — `design/my-id/weather-app/1234-3` 을 새로 만듭니다
+   > 2. dev PR #1234 기준으로 **새로 시작** — `design/my-id/1234-3` 을 새로 만듭니다
 
 3. **이어서**를 고르면 그 브랜치를 체크아웃하고 `git pull --ff-only`로 최신화한다.
    **새로 시작**을 고르면 비어 있는 첫 이름(`-2`, `-3` …)으로 dev 브랜치에서 분기한다.
 
 **커밋·푸시는 어느 경로에서도 수행하지 않음** — 첫 푸시는 `/figma-apply` 시점에 `git push -u`로 처리한다.
+
+#### 2c. 커밋 이력 패널을 띄운다 (2a·2b 공통)
+
+브랜치가 확정되면 개발툴의 커밋 이력 뷰를 앞으로 꺼내 검수 내내 보이게 한다. 1단계에서 연 앱 이름을 쓰고,
+모르면 frontmost 앱을 조회한다. **표에 없는 툴은 단축키를 지어내지 말고** 바로 아래 폴백으로 간다.
+
+| 개발툴 | 커밋 이력 뷰 | 키 |
+|---|---|---|
+| Android Studio · IntelliJ 계열 | Git 도구 창의 Log 탭 | ⌘9 |
+| Xcode | Source Control navigator | ⌘2 |
+| VS Code · Cursor 계열 | Source Control 뷰 | ⌃⇧G |
+
+```bash
+osascript -e 'tell application "System Events" to name of first application process whose frontmost is true'
+# 접근성 권한이 없으면 keystroke 는 (1002) 로 실패한다 — 반드시 이 형태로 묶어 조건부 실행
+[ "$(osascript -e 'tell application "System Events" to get UI elements enabled')" = "true" ] && \
+  osascript -e 'tell application "{앱}" to activate' \
+            -e 'tell application "System Events" to keystroke "{키}" using {수식키}'
+```
+
+**keystroke 가 못 나갔으면(권한 없음·표에 없는 툴) 패널 없이 넘어가지 않는다** — `git log` 를 도는
+`.command` 스크립트를 만들어 `open` 으로 띄운다. `open` 은 접근성·자동화 권한이 필요 없고, 창은 Enter 로
+새로고침돼 `/figma-apply` 반영분이 그대로 쌓인다.
+
+**패널을 띄웠든 못 띄웠든 커밋 목록은 채팅에 한 번 찍는다.** 어느 경우든 검수를 막지 않는다.
+
+```bash
+git -C {PROJECT_DIR} rev-parse --verify -q origin/{dev_branch} >/dev/null \
+  && RANGE="--not origin/{dev_branch}" || RANGE="-n 20"   # dev 브랜치 삭제 시 --not 은 fatal
+git -C {PROJECT_DIR} log {확정된 브랜치} $RANGE --format='%ad │ %s' --date=short
+```
 
 ### 3. 빌드 & 실행
 
@@ -129,10 +165,12 @@ start`, iOS: `xcodebuild` → `simctl launch`). 모듈·variant·스킴이 불�
 
 > (프로젝트를 `{PROJECT_DIR}` 에 받았고, 이후 작업도 이 프로젝트에서 이어서 진행합니다.)
 
-2b를 거쳤다면 어느 쪽을 선택한 결과인지, 3b에서 에뮬레이터를 새로 만들었다면 그것도 한 줄 덧붙인다.
+2b를 거쳤다면 어느 쪽을 선택한 결과인지, 2c에서 패널을 띄웠다면 어디에 띄웠는지, 3b에서 에뮬레이터를 새로
+만들었다면 그것도 한 줄 덧붙인다.
 
 > (기존 `…/1234` 에서 이어서 진행합니다 — 이전 검수 커밋 3개가 그대로 있습니다.)
 > (새로 시작을 선택하셔서 `…/1234-3` 을 만들었습니다.)
+> (커밋 이력은 Android Studio 의 Git 도구 창에 띄워 뒀습니다 — `/figma-apply` 로 반영할 때마다 여기 쌓입니다.)
 > (실행할 기기가 없어 resizable 에뮬레이터 `figma-qa-resizable` 을 새로 만들었습니다 — 폰·폴더블·태블릿을 이 하나로 전환해 볼 수 있습니다.)
 
 <!--

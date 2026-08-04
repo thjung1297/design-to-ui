@@ -2,10 +2,12 @@
 name: figma-diff-apply
 description: Figma 변경을 디자이너 검수용 design/* 브랜치에 incremental 적용. /figma-apply 커맨드에서 위임 호출. design-to-ui(7-Step 새 화면 스캐폴딩)와 달리 변경된 컴포넌트만 식별·수정합니다. figma URL 1개(figma-driven) / 2개(diff-driven) 두 모드 지원. 새 화면 변환은 이 스킬 대신 design-to-ui를 사용하세요.
 license: Apache-2.0
+user-invocable: false
 metadata:
   author: NAVER
-  version: "1.1"
-  requires: [project-design-system, figma-asset-download]
+  version: "2.0"
+  requires: [figma-asset-download]
+  optional: [project-design-system]
   platform: android
 ---
 
@@ -15,165 +17,141 @@ Figma URL의 현재 디자인과 design/* 브랜치의 현 코드를 대조하�
 
 `design-to-ui`의 7-Step 풀 파이프라인을 호출하지 않습니다. 그 파이프라인은 "없던 화면을 처음 만들 때"에 최적화되어 있어, iteration마다 돌리면 토큰이 낭비되고 의도치 않은 전체 리팩토링 위험이 있습니다.
 
-## 동작 모드
-
-전달된 figma URL 수에 따라 두 모드로 분기합니다. 둘 다 baseline 비교라는 점은 같지만, 비교 대상의 baseline이 무엇인지가 다릅니다:
-
-| 모드 | 입력 | baseline | 적합한 흐름 |
-|------|------|---------|-----------|
-| **figma-driven** (default) | figma URL 1개 | 현재 코드 (git working tree) | 디자이너가 URL만 던지는 일반 흐름. 누적된 코드↔디자인 격차도 함께 검수됨 |
-| **diff-driven** (옵션) | figma URL 2개 (현재 + 이전 시점) | 이전 figma 응답 | 디자이너가 변경 시점을 명시하는 흐름. 토큰 ~80% 절감, scope 깔끔 |
-
-> v6.1 mock 실험에서 두 모드 모두 5/5 통과 + false signal 0건 입증. 트레이드오프는 위 표 참조.
-
 ## Prerequisites
 
-- 호출 시점에 `design/*` 브랜치가 체크아웃되어 있을 것 (`/figma-apply` Section 2가 보장)
+- 호출 시점에 `design/*` 브랜치가 체크아웃되어 있을 것 (`/figma-start`가 보장)
 - Figma Desktop MCP 연결(`get_design_context` 사용 가능) 또는 `FIGMA_ACCESS_TOKEN` 중 하나
-- 프로젝트에 `.claude/skills/project-design-system/SKILL.md`가 존재 (있으면 토큰 매핑에 사용)
-
-## 서브에이전트 위임 규칙
-
-`design_context`는 변환의 원본이므로 **메인 컨텍스트에서 직접 읽습니다.** 서브에이전트에 "요약"을 맡기면 정확한 수치·중첩 구조가 소실됩니다(design-to-ui와 동일 원칙).
-
-반대로 figma-driven 모드의 Phase 2 Diff·QA는 **반드시 서브에이전트로 분리**합니다. 메인이 후보 파일 전체와 분석 추론을 함께 들고 있으면 (1) 토큰이 부풀고 (2) QA가 자기평가 편향에 빠지며 (3) 후속 Phase 3 Edit이 불필요한 영역까지 손대기 쉬워집니다. (diff-driven 모드는 unix `diff`가 Diff Agent를 대체하므로 적용되지 않음.)
-
-| 작업 | 서브에이전트 위임 | 이유 |
-|------|:-:|------|
-| design_context 읽기 | 금지 | 변환 원본 — 직접 봐야 정확 |
-| 후보 파일 Read | 금지(메인) / **필수(서브)** | 메인은 파일 본문을 받지 않음. Phase 2a가 자기 컨텍스트에서 Read |
-| Phase 2a Diff 분석 | **필수(후보 파일당 1개, 병렬)** | 컨텍스트 분리 + 병렬화로 토큰·시간 절감 |
-| Phase 2b QA 검증 | **필수(독립 세션 1개)** | 자기평가 편향 차단 — Diff Agent 컨텍스트 미상속 |
-| Phase 2c 재시도 | **필수(Phase 2a를 1회 재spawn)** | 같은 컨텍스트 재사용 금지 |
-| Phase 3 Edit 적용 | 금지 | 식별 결과를 메인이 직접 적용해야 일관 |
-
-### 컨텍스트 격리 contract
-
-각 서브에이전트가 받는 입력과 반환하는 출력을 엄격히 한정합니다.
-
-| Agent | 입력(받음) | 출력(반환) | 받지 않음 |
-|-------|----------|-----------|----------|
-| Diff Agent (N개) | 담당 후보 파일 경로 1개 + Figma `design_context` 발췌 + `get_screenshot` 이미지 + `get_variable_defs` JSON | Added/Changed/Removed/Moved 테이블 (구체값 명시) | 다른 후보 파일, 다른 Diff Agent의 산출물, 메인의 의사결정 메모 |
-| QA Agent | Diff Agent들의 출력(병합) + screenshot + 후보 파일 경로 목록 | 4개 Binary Criteria 결과 + (FAIL 시) 이슈 목록 | Diff Agent의 추론 과정·중간 노트, 메인 컨텍스트 |
-| Diff Agent (재시도) | 위 입력 + QA의 이슈 목록 | 갱신된 Diff 테이블 | 1차 시도의 내부 추론 |
-
-메인 컨텍스트는 각 단계의 **최종 출력만** 받습니다. 후보 파일 전문, 분석 추론, 시도 횟수별 중간 산출물은 메인에 흘러들어오지 않습니다.
+- `project-design-system`이 있으면 토큰 매핑에 사용 (없으면 기존 코드 컨벤션 유지)
 
 ---
 
-## Phase 1: 데이터 수집
+## Phase 0: 경로 판정 (먼저 이걸 정한다)
 
-### 1-1. Figma 스펙 (MCP 우선)
+**0-1. 먼저 요청 유형을 가른다.** 이 스킬은 "Figma 선언값 ↔ 코드"를 대조하는 도구다. 그 전제가 성립하지 않는 요청에 Phase 1·2를 돌리면 아무 근거도 못 얻고 비용만 쓴다.
+
+| 유형 | 신호 | 처리 |
+|---|---|---|
+| **A. 확인·캡처** | "~노출되는지 확인", "~케이스 보여줘", "이미지 저장해줘" — **코드를 바꾸라는 말이 없다** | **이 스킬이 할 일이 없다.** Figma 수집·diff 없이 `design-qa`(또는 캡처)로 넘긴다. 대조 대상이 아예 없으므로 Phase 1·2 전체를 건너뛴다 |
+| **B. 프롬프트-스펙** | **기준값이 프롬프트에 있고 Figma엔 아직 없다.** ① Figma가 표현 못 하는 것을 수치까지 지정("240ms 등속", "즉시 전환") ② **상대 증감**("5dp 올려줘") ③ 절대값인데 Figma가 아직 그 값이 아님 | **프롬프트 값이 기준이다.** Figma는 diff 원본이 아니라 ⓐ 색·치수 토큰 확인 ⓑ 정지 상태 정합 제약 ⓒ **차이 보고용**으로만 쓴다. Figma 선언값으로 요청을 덮어쓰지 말고, 어긋나면 Phase 4 "디자이너 확인 필요"에 올린다 |
+| **C. Figma 대조** | **기준값이 Figma에 있다** — Figma 쪽이 바뀌었으니 코드를 맞춰 달라는 요청 | 아래 0-2로 진행 |
+
+유형 B의 판정은 추측하지 말고 확인한다 — `get_motion_context(nodeId, recursive=true)`가 `{"nodes":[]}`면 Figma에 모션 데이터가 없다는 뜻이고, 그러면 그 요청의 수치는 프롬프트에만 존재한다.
+
+**0-2. 유형 C면 규모로 경로를 가른다.** 잘못 고르면 20dp 한 줄 바꾸는 데 서브에이전트 4홉이 돌거나, 반대로 화면 전체 변경을 메인이 혼자 훑는다.
+
+| | 국소 경로 (기본) | 광범위 경로 |
+|---|---|---|
+| 조건 | 디자이너 프롬프트가 **요소와 속성을 지목**하고(예: "트랙 리스트 사이 간격 20dp로", "타이틀 색 초록으로"), 대상 파일이 `Grep`으로 1~2개로 확정됨 | 대상 화면·요소가 프롬프트로 특정되지 않음 / 후보 파일 3개+ / "전체적으로 바뀌었어" 류 / 신규 컴포넌트 추가 |
+| Phase 2 | 메인이 직접 (서브에이전트 0개) | Diff Agent 팬아웃 + QA Agent |
+| 근거 | 국소 변경에서 팬아웃은 요청과 무관한 오탐을 만들고, QA는 그 오탐을 걷어내는 데 다시 비용을 쓴다 (실측: 607s·202k → 53s·11k, 정확도는 국소 경로가 더 높았음) | 대상이 불명확할 때는 컨텍스트 격리·독립 QA가 실제로 누락을 잡는다 (v6.1: QA 제거 시 통과율 5/5 → 2/5) |
+
+애매하면 국소 경로로 시작하고, Phase 1에서 후보가 3개+로 벌어지면 광범위로 승격한다.
+
+### 유형 B의 정지 상태 회귀 검증
+
+Figma에 없는 동작을 넣을 때 가장 깨지기 쉬운 것은 **정지 상태**다. 애니메이션을 얹었더니 시작·끝 프레임이 기존 에셋과 미세하게 달라져 design-qa 오버레이가 전부 어긋나는 식이다. 그래서 유형 B는 구현 후 다음을 **픽셀로** 확인한다:
+
+1. 변경 전 커밋과 변경 후를 각각 같은 정지 상태로 띄운다 (이 프로젝트는 `-e state selected` 처럼 상태를 인자로 받는다).
+2. 두 캡처를 diff 해서 **차이가 0인지** 확인한다.
+
+기존 에셋을 재사용해 점진 노출·클립하는 식으로 구현하면 이 검증이 통과한다. 반대로 글리프·도형을 새로 그려 흉내내면 거의 통과하지 못한다.
+
+---
+
+## Phase 1: 수집
+
+### 1-1. Figma 스펙
 
 ```javascript
-// 병렬 호출
-get_design_context(nodeId)
-get_metadata(nodeId)
-get_screenshot(nodeId)
+get_metadata(nodeId)      // 먼저: 프레임 목록·좌표·크기
+get_design_context(...)   // 그 다음: 대상 노드로 좁혀서
 get_variable_defs(nodeId)
+get_screenshot(nodeId)
 ```
 
-**diff-driven 모드일 때**: `get_design_context`를 두 시점(`curr_nodeId` / `prev_nodeId`) 모두 호출. 두 응답을 임시 파일로 저장해 Phase 2의 `diff` 입력으로 사용.
+- **`get_design_context`는 프레임 또는 그 하위 노드로 좁혀서 호출한다.** 상위 레벨 노드로는 코드가 나오지 않는다 — **페이지(canvas) 노드는 호출 자체가 실패**하고, **section 노드는 sparse metadata만** 돌아온다("개별 노드로 다시 호출하라"는 안내와 함께). `/figma-apply`가 받는 링크는 페이지 노드인 경우가 많으므로, `get_metadata`로 프레임 목록을 먼저 받아 대상 프레임(또는 프롬프트가 지목한 서브노드)을 고른 뒤 호출한다.
+- **`get_metadata`의 좌표·크기는 간격·치수 판정의 결정적 근거다.** 형제 노드의 `y` − (앞 노드 `y` + `height`) = 간격. `design_context`를 프레임마다 다시 뜨지 않고도 **한 번의 `get_metadata`로 모든 프레임의 선언값을 비교**할 수 있다.
 
-MCP 미연결 시: 사용자에게 Figma Desktop 앱 실행을 안내(플러그인 CLAUDE.md "Figma MCP 사전 확인" 절). REST fallback이 필요하면 `figma-asset-download/scripts/`의 헬퍼를 활용.
+  판정법: 같은 리스트를 담은 프레임들을 나란히 놓고 `다음 카드 y − (앞 카드 y + height)`를 비교한다. 카드 높이가 같은데 이 값이 프레임마다 다르면 **같은 요소가 프레임별로 다르게 선언된 것**이다. 코드가 라이트/다크 공용 컴포저블 한 벌이면 한쪽에 맞추는 순간 다른 쪽이 어긋난다.
 
-### 1-2. 현 코드 후보 식별
+  **이런 불일치는 고쳐놓고 넘어가지 말고 Phase 4 "디자이너 확인 필요"에 올려 회신을 받는다.**
 
-baseline 파일은 사용하지 않습니다(이번 버전 범위 외). 대신 현 코드를 직접 탐색:
+- **읽은 값은 그 시점의 값이다.** Figma는 라이브 문서이고 노드 ID까지 바뀐다 (실측: 같은 세션 1시간 사이에 `TrackList` gap이 20 → 12로, statusbar 노드가 `2009:47` → `176:4`로 변했다). 그래서 ① 판정 근거로 쓴 수치는 Phase 4 표에 **읽은 값 그대로 남기고**, ② 커밋 본문에 들어가 나중에 대조 가능하게 한다. 오래된 발췌를 재사용하지 말고 매번 다시 읽는다.
+- **diff-driven 모드(URL 2개)**: `get_design_context`를 두 시점 모두 호출해 임시 파일로 저장, Phase 2의 `diff` 입력으로 사용.
+- MCP 미연결 시: Figma Desktop 앱 실행을 안내(플러그인 CLAUDE.md "Figma MCP 사전 확인" 절). REST fallback은 `figma-asset-download/scripts/` 헬퍼.
 
-- `Glob("**/res/layout/*.xml")` + `Glob("**/*Compose*.kt")` 등으로 화면 후보 수집
-- Figma 프레임 이름·`data-name`을 키워드로 `Grep` → 파일 좁히기
-- Code Connect 매핑이 있으면 `get_code_connect_map(nodeId)` 호출 결과 우선
+### 1-2. 대상 화면·파일 확정
 
-매핑 실패한 프레임은 "신규 컴포넌트"로 별도 분류하여 Phase 2 출력에 표시.
+Code Connect 매핑이 있으면 `get_code_connect_map(nodeId)` 결과를 우선한다.
 
----
+**목표 화면** = 이 Figma 노드에 대응하는 화면 단위. 컨테이너 타입(Fragment / Composable Screen / Activity)은 가리지 않는다. 이후 Phase 3·3.5의 **scope 기준 단위**가 된다.
 
-## Phase 2: Diff 분석
-
-### figma-driven 모드 (URL 1개) — Generator/Evaluator 분리
-
-> 서브에이전트 격리 원칙은 위 "서브에이전트 위임 규칙 / 컨텍스트 격리 contract" 표를 따릅니다.
-
-#### Phase 2a: Diff Agent (후보 파일당 1개, 병렬)
-
-Phase 1-2가 식별한 후보 파일이 N개면 `Agent` 도구를 **단일 응답에서 N번 병렬 호출**합니다(서로 의존 없음).
-
-각 Agent 프롬프트에 포함하는 입력(이외에는 전달 금지):
-- 담당 후보 파일 절대 경로 1개 (Agent가 자기 컨텍스트에서 직접 Read)
-- 해당 파일에 매핑된 Figma 노드의 `design_context` 텍스트(필요 부분만 발췌)
-- `get_screenshot` 이미지
-- `get_variable_defs` JSON
-- 분류·구체값 규칙 (아래)
-
-반환 형식:
-- **Added** — Figma에는 있고 코드에 없음
-- **Changed** — 양쪽에 있으나 속성 다름
-- **Removed** — 코드에 있고 Figma에 없음
-- **Moved** — 위치/계층만 변경
-
-각 항목에 **구체값 필수**: dp, hex, 토큰 경로(예: `Color.NaverGreen500`, `MaterialTheme.typography.titleLarge`), 에셋 SHA. "레이아웃 변경" 같은 모호 기술 금지.
-
-메인은 N개 Agent의 출력 테이블만 받아 병합합니다. 각 Agent의 추론 과정·읽은 파일 본문은 메인 컨텍스트로 들어오지 않습니다.
-
-#### Phase 2b: QA Agent (독립 세션 1개)
-
-Phase 2a 병합 결과를 입력으로 **독립 세션 Agent 1회 호출**합니다. Diff Agent의 컨텍스트는 상속되지 않습니다.
-
-QA Agent 프롬프트에 포함하는 입력:
-- Phase 2a 병합 산출물(diff 테이블)
-- `get_screenshot` 이미지
-- 후보 파일 경로 목록 (QA가 필요 시 직접 Read하여 검증)
-
-반환 형식: 4개 Binary Criteria 결과 + (FAIL 시) 이슈 목록.
-
-Binary Criteria 4개:
-
-| 기준 | PASS 조건 |
-|------|-----------|
-| 매핑 커버리지 | Figma 프레임의 80%+ 매핑됨 |
-| 이미지 정합성 | Changed/Added 항목이 screenshot과 일치 (샘플 3개) |
-| 변경 구체성 | 모호 기술 없음(dp/hex/토큰 명시) |
-| 신규 식별 | 매핑 불가 프레임이 명시적으로 분류됨 |
-
-하나라도 FAIL이면 전체 FAIL.
-
-#### Phase 2c: 재시도 1회
-
-QA가 FAIL이면 Phase 2a를 **새로운 서브에이전트로 1회 재spawn**합니다(1차 시도의 컨텍스트 재사용 금지 — 같은 세션을 살리면 같은 누락을 반복하기 쉽습니다). 재spawn 시 Phase 2a 입력에 QA의 이슈 목록을 추가.
-
-2차도 FAIL이면 **경고를 붙여 Phase 3 진행**(분석 도구는 생성 도구보다 수렴이 빠르다는 캘린더팀 원칙).
+매핑 실패한 프레임은 "신규 컴포넌트"로 분류해 Phase 4에 표시한다.
 
 ---
 
-### diff-driven 모드 (URL 2개) — unix `diff` short-circuit
+## Phase 2: 변경 식별
 
-서브에이전트 분리 없이 메인 컨텍스트가 두 figma 응답 텍스트를 직접 비교합니다. v6.1 mock 실험에서 SKILL 부재(L1) 환경의 메인이 자율 도출한 흐름이며, 아래와 같은 단순한 입력만으로 5/5 mock에서 figma-driven Full과 동등한 정확도를 보였습니다:
+산출물은 Phase 4와 같은 스키마의 표다 — `분류(Added/Changed/Removed/Moved) | 요소 | Figma 값 | 코드 값 | 위치(file:line)`. **네 칸이 다 채워지지 않는 행은 넣지 않는다** (그래서 "레이아웃 변경" 같은 행은 성립하지 않는다).
 
-> "다음은 figma N+1 응답이고 (`<curr_nodeId>` 캡처 결과), 이전 figma 응답은 (`<prev_nodeId>` 캡처 결과)입니다. 차이를 찾아서 baseline 코드에 적용해주세요."
+`Removed`(코드에 있고 Figma에 없음)는 역방향으로 따로 찾는다 — 특히 **call-site removal**(`design_context`엔 없는데 코드가 여전히 호출·렌더하는 요소). v6.1 실험에서 재현율 100%로 미식별됐던 항목이라 명시한다.
 
-세부 단계는 메인이 자유롭게 결정합니다. 권장 흐름:
+### 국소 경로
 
-1. 두 figma 응답 텍스트를 unix `diff`로 비교 → 변경된 라인만 추출
-2. 변경 라인에서 의미 있는 키워드(토큰명·class·data-name·asset SHA) 추출 후 후보 코드 파일에 `Grep`
-3. 매핑된 위치에 최소 변경 적용
+메인이 직접 대조한다. 서브에이전트를 쓰지 않는다.
 
-이후 **Phase 2b QA cross-check + Phase 2c retry는 figma-driven과 동일하게 호출** — self-evaluation 위험은 두 모드 공통이므로 생략하지 않습니다 (v6.1 L2 트랙: QA를 빼면 통과율 5/5 → 2/5로 무너짐).
+**같은 값이 여러 곳에 있을 때 노드 주석·구조로 대상을 가려낸다** — 실측에서 리스트 간격 12dp와 헤더 간격 12dp가 값이 같아 혼동 위험이 있었다.
 
-> 💡 **diff-driven의 핵심 가치**: figma-driven에서 가장 큰 토큰 비용을 차지하는 Phase 2a Diff Agent N개 병렬 spawn을 unix `diff`로 대체. 결정적 텍스트 비교라 false signal 누수가 없고, 토큰은 약 80% 절감.
+프롬프트가 요청하지 않은 차이가 눈에 띄어도 **표에 넣지 않는다.** Phase 4의 "그밖에 눈에 띈 점"에 한 줄로만 남기고 적용하지 않는다.
+
+### 광범위 경로
+
+`design_context`는 변환 원본이라 **메인이 직접 읽는다** — 서브에이전트 요약을 받으면 수치·중첩 구조가 소실된다.
+
+**2a. Diff Agent** — 후보 파일당 1개, 단일 응답에서 병렬 호출. 각 Agent는 담당 파일 하나만 알고(직접 `Read`), 다른 Agent의 산출물과 메인의 의사결정은 받지 않는다. 메인은 **출력 표만** 받는다.
+
+**2b. QA Agent** — 독립 세션 1개, 2a 컨텍스트 미상속(자기평가 편향 차단). 아래를 cross-check해 하나라도 FAIL이면 전체 FAIL.
+
+- **값 검증** — 표의 `Figma 값` 칸이 실제 노드 값과 맞는지 **직접 재조회해서** 확인한다. 2a가 받은 발췌를 그대로 믿지 않는다. (실측 근거: 한 Diff Agent가 stale 발췌를 믿고 `20dp`로 단정한 반면 다른 Agent는 라이브를 재조회해 `12px`로 정반대 결론을 냈다. Case ①에서 유일한 실제 회귀 — 이미 정합했던 화면을 깨뜨리는 행 — 도 이 검증이 좌표 재조회로 잡았다.)
+- **Removed 검증** — 사라진 호출이 누락 없이 잡혔는지
+- **매핑 커버리지** — Figma 프레임 80%+
+- **스코프 위반 행** — 요청 범위 밖을 건드리는 행 표시. 표시된 행은 Phase 3에서 적용하지 않는다
+
+실측에서 QA가 잡아낸 것의 대부분이 **팬아웃이 만든 오탐**이었다(6행 중 유효 2행, 1행은 적용하면 정합했던 화면을 회귀). 그래서 QA는 광범위 경로에만 둔다.
+
+**2c. 재시도 1회** — FAIL이면 2a를 새 서브에이전트로 재spawn(1차 컨텍스트 재사용 금지 — 같은 세션은 같은 누락을 반복한다). 2차도 FAIL이면 경고를 붙여 Phase 3 진행.
+
+### URL 2개 모드 (diff-driven)
+
+두 figma 응답을 unix `diff`로 비교해 변경 라인만 추출 → 키워드로 코드 `Grep` → 적용. 결정적 텍스트 비교라 2a 팬아웃을 대체하며 토큰이 크게 줄고 false signal이 없다. 세부 단계는 메인 재량.
+
+QA(2b)는 **경로 판정을 따른다** — 국소면 생략, 광범위면 위와 동일.
 
 ---
 
 ## Phase 3: 최소 변경 적용
 
-식별된 변경 컴포넌트에 한정해 메인 컨텍스트가 `Edit`로 적용합니다.
+- **Phase 2 표에 없는 파일·요소는 수정 금지** ("함께 정리" 명목도 안 됨)
+- **변경을 목표 화면에 가둔다 (scope 회피 우선)** — 다른 화면도 쓰는 값(공통 토큰·공유 컴포넌트)을 바꿔야 하면 **목표 화면 국소 해법**을 우선한다. 국소 해법이 없거나 본래 전역(디자인 시스템) 변경이면 진행하되 Phase 3.5에 영향 범위를 기록. 단 적용된 디자인을 되돌리는 식의 회피는 금지. (실측 배경: 이전에 sports 작업 중 전역 `AppTypography`를 고쳐 다른 화면까지 영향이 갔다.)
+- **색·치수는 `project-design-system`이 있으면 토큰으로** 매핑, 없으면 기존 컨벤션 유지
+- **에셋은 `figma-asset-download`에 위임한다** — 신규 정적 에셋, diff-driven에서 새로 나온 `imgXxx` 상수 모두. 동적 비주얼(Canvas·그래프)은 SVG의 실제 파라미터를 보고 적용한다
 
-규칙:
-- **변경 없는 부분 건드리지 않음** — Phase 2 테이블에 없는 파일·요소는 수정 금지
-- **색상·치수는 토큰 매핑** — `project-design-system`이 있으면 토큰으로, 없으면 기존 코드의 컨벤션 유지(하드코딩 금지)
-- **신규 정적 에셋(Type A)** → `figma-asset-download` 위임 (design-to-ui Step 5 규칙 재사용). diff-driven 모드에서도 새 `imgXxx` 상수가 발견되면 동일하게 위임.
-- **동적 비주얼(Type B, Canvas/그래프)** → SVG 다운로드 후 `Read`로 파라미터(stroke-width, opacity, path) 확인. 추측 금지
-- **기존 에셋(Type C)** → `res/drawable` 재사용. 파일명만 보고 매핑 금지, Type C 검증 절차(design-to-ui Step 4)를 따름
+---
+
+## Phase 3.5: 영향 범위 산출 (scope 안전망)
+
+변경한 값·심볼의 사용처를 `Grep`해 **고유 화면 수**를 센다(파일 위치가 아니라 실제 사용처 기준). **2개 이상 화면이 쓰는 변경**이면 Phase 4 "영향 범위"에 목록을 기록한다 — 커맨드가 커밋 본문에 넣고, 개발자가 `git log`로 확인한다.
+
+완벽한 scope 판정이 아니라 **명백한 누수를 보이게 하는 최소 그물**이다. 차단하거나 자동 되돌림하지 않고, 디자이너에게 scope 판단을 시키지 않는다.
+
+---
+
+## 빌드 에러 수정 (커맨드 재위임 시)
+
+`/figma-apply`가 빌드 게이트에서 실패하면 빌드 에러와 함께 이 스킬을 다시 위임 호출한다. **빌드 실행·재빌드는 커맨드 책임이고 이 스킬은 코드 편집만 한다**(gradle 직접 실행 금지). 커맨드가 최대 3회까지 재위임한다.
+
+- 이미 메인에 있는 `design_context`·Phase 2 표를 재사용한다 — Figma에서 새로 가져오지 않는다
+- **적용된 디자인 변경을 되돌려 빌드만 통과시키지 않는다.** 누락 에셋은 `figma-asset-download`로 채우고(참조 삭제 금지), 못 고치면 *수정 불가*로 보고하고 중단한다 (커맨드가 WIP 커밋으로 개발자에게 인계)
 
 ---
 
@@ -182,20 +160,28 @@ QA가 FAIL이면 Phase 2a를 **새로운 서브에이전트로 1회 재spawn**�
 ```markdown
 ## figma-diff-apply 결과
 
-### 변경 요약
-| # | 유형 | 컴포넌트 | 상세 | 파일 |
-|---|------|----------|------|------|
-| 1 | Changed | TopBar.title | 18sp → 20sp | components/TopBar.kt:34 |
-| 2 | Added | NotificationIcon | 우측 24dp 추가 | components/TopBar.kt:48 |
+### 경로
+국소 (서브에이전트 0) / 광범위 (Diff Agent N개 + QA)
 
-### QA 검증
-| 매핑 커버리지 | PASS |
-| 이미지 정합성 | PASS |
-| 변경 구체성 | PASS |
-| 신규 식별 | PASS |
+### 변경 적용
+| 분류 | 요소 | Figma 값 | 코드(변경 전) | 위치 |
+|------|------|---------|-------------|------|
+
+### QA 검증 (광범위 경로에서만)
+| 기준 | PASS/FAIL |
 
 ### 신규 컴포넌트(매핑 실패)
 - (없음)
+
+### 영향 범위 (2개+ 화면에 영향 시에만 기록)
+- (없음 — 변경이 목표 화면에 한정됨)
+
+### 디자이너 확인 필요
+- 같은 요소가 Figma 프레임마다 다른 값으로 선언된 경우 그 목록
+- (없으면 생략)
+
+### 그밖에 눈에 띈 점 (적용 안 함)
+- (없으면 생략)
 ```
 
 ---
@@ -203,10 +189,10 @@ QA가 FAIL이면 Phase 2a를 **새로운 서브에이전트로 1회 재spawn**�
 ## 금지사항
 
 - **`design-to-ui` 7-Step 풀 파이프라인 호출 금지** — 이 스킬의 존재 이유 자체가 그 회피
-- **baseline 파일(`.claude/context/ui-spec/*.md`) 참조 금지** — 이번 버전 범위 외, 후속 PR(`project-ui-spec` 도입)에서 다룸
-- **QA Agent FAIL을 경고 없이 통과 금지** (두 모드 공통)
-- **`design_context`를 서브에이전트에 위임해 "요약" 받지 않음**
-- **Phase 2 테이블에 없는 파일·요소를 "함께 정리" 명목으로 수정 금지**
+- **국소 경로에서 서브에이전트 팬아웃 금지** — 요청과 무관한 오탐을 만든다
+- **광범위 경로에서 QA FAIL을 경고 없이 통과 금지**
+- **디자이너가 지정한 값을 Figma 선언값으로 임의 교체 금지** — 둘이 어긋나면 요청대로 적용하고 차이를 Phase 4 "디자이너 확인 필요"에 올린다. 실측에서 Diff Agent가 "5dp 올려줘"(→17dp) 요청을 Figma 선언값 20dp로 덮어쓰라고 결론낸 사례가 있다
+- **baseline 파일(`.claude/context/ui-spec/*.md`) 참조 금지** — 후속 PR(`project-ui-spec` 도입)에서 다룸
 
 <!--
 Design-To-UI
