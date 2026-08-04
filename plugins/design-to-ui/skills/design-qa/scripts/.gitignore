@@ -1,0 +1,2 @@
+# 셀프테스트가 scripts/ 를 import 하면서 생긴다 (커밋 대상 아님)
+__pycache__/

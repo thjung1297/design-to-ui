@@ -22,6 +22,8 @@ usage:
   python3 glyph_probe.py <figma.png> <real.png> --grid 6,4 [--thr 0.12] [--ink 40]
 """
 import argparse
+from statistics import median
+
 from PIL import Image
 
 
@@ -64,7 +66,13 @@ def main():
     ap.add_argument("figma"); ap.add_argument("real")
     ap.add_argument("--grid", default="6,4", help="cols,rows (regions 없을 때)")
     ap.add_argument("--regions", default=None, help="'name:L,T,R,B; ...'")
-    ap.add_argument("--thr", type=float, default=0.12, help="width/coverage 비율 보고 임계 (0.12 = ±12%)")
+    # argparse 가 help 를 %-포맷하므로 리터럴 % 는 %% 로 써야 한다 (안 하면 --help 가 ValueError 로 죽는다).
+    ap.add_argument("--thr", type=float, default=0.12, help="width/coverage 비율 보고 임계 (0.12 = ±12%%)")
+    ap.add_argument("--sys-thr", type=float, default=0.005,
+                    help="전역 폭 편차 임계 — median width_ratio 가 1 에서 이만큼 벗어나고 방향이 일치하면 "
+                         "letterSpacing 선언 대조를 지시 (0.005 = ±0.5%%)")
+    ap.add_argument("--outlier-thr", type=float, default=0.03,
+                    help="국소 이상치 임계 — median 대비 이만큼 벗어난 영역 (0.03 = ±3%%)")
     ap.add_argument("--ink", type=int, default=40, help="ink 판정: 배경 대비 N 이상 차이")
     ap.add_argument("--mode", choices=["dark", "light"], default="dark",
                     help="글자 극성: dark=밝은배경 위 어두운글자, light=컬러/어두운배경 위 흰글자")
@@ -90,8 +98,10 @@ def main():
             for cx in range(cols):
                 boxes.append((f"r{ry}c{cx}", (cx * cw, ry * ch, (cx + 1) * cw, (ry + 1) * ch)))
 
-    print(f"# glyph_probe  thr=±{a.thr:.0%}  ink_delta={a.ink}")
+    print(f"# glyph_probe  thr=±{a.thr:.0%}  ink_delta={a.ink}  "
+          f"sys=±{a.sys_thr:.1%}  outlier=±{a.outlier_thr:.1%}")
     flagged = []
+    rows = []
     for name, box in boxes:
         f = ink_stats(figL, box, a.ink, a.mode)
         r = ink_stats(realL, box, a.ink, a.mode)
@@ -99,6 +109,12 @@ def main():
             continue  # 텍스트 거의 없는 영역 skip
         wr = r["bbox_w"] / max(1, f["bbox_w"])
         cr = r["coverage"] / max(1e-6, f["coverage"])
+        rows.append((name, box, wr, cr))
+
+    # 개별 임계(±thr)는 **큰** 오차만 잡는다. 실측에서 letterSpacing -0.5% 는 width_ratio 0.988(1.2%),
+    # 한글 줄바꿈 차이는 1.052(5.2%) 로 나와 둘 다 ±12% 를 통과했다. 그래서 아래 두 축을 함께 본다.
+    med_wr = median([w for _, _, w, _ in rows]) if rows else 1.0
+    for name, box, wr, cr in rows:
         tag = ""
         if cr > 1 + a.thr:
             tag = "  <-- WEIGHT (real 더 굵음 — faux-bold 의심: 가변폰트 weight 인스턴스 명시 등록)"
@@ -106,7 +122,28 @@ def main():
         elif abs(wr - 1) > a.thr:
             tag = "  <-- WIDTH (advance 차 — letterSpacing/폰트 advance figma 직독)"
             flagged.append((name, "width", round(wr, 3)))
+        elif abs(wr - med_wr) > a.outlier_thr:
+            # 다른 텍스트는 맞는데 이 영역만 다르다 → 폰트 전역 문제가 아니라 이 노드의 줄바꿈/폭 문제.
+            tag = f"  <-- OUTLIER (median {med_wr:.3f} 대비 {wr - med_wr:+.3f} — 줄바꿈 위치·폭 확인)"
+            flagged.append((name, "outlier", round(wr, 3)))
         print(f"{name:>10} box={box} width_ratio={wr:.3f} coverage_ratio={cr:.3f}{tag}")
+
+    # 전역 편차: 모든 텍스트가 **같은 방향으로** 조금씩 좁거나 넓으면 개별 임계로는 영원히 안 걸린다.
+    # 이건 노드별 오차가 아니라 스타일 선언(letterSpacing/tracking) 문제라서, 픽셀이 아니라 **선언값**을
+    # 대조해야 한다 — 그래서 FAIL 이 아니라 "선언 대조하라"는 지시로 낸다.
+    # 방향 일치는 **편차가 있는 영역들 사이에서만** 센다. 글자 수가 적은 영역(`9:41`, `←`)은 advance 차가
+    # 누적되지 않아 width_ratio 가 정확히 1.000 으로 나오는데, 그걸 분모에 넣으면 진짜 전역 편차가
+    # 희석돼 안 걸린다(실측: letterSpacing -0.5% 화면에서 6/9 가 되어 80% 미달).
+    deviating = [w for _, _, w, _ in rows if abs(w - 1) > a.sys_thr]
+    if len(rows) >= 4 and len(deviating) >= 3 and abs(med_wr - 1) > a.sys_thr:
+        side = sum(1 for w in deviating if (w < 1) == (med_wr < 1))
+        if side >= 0.8 * len(deviating):
+            narrow = "좁다" if med_wr < 1 else "넓다"
+            print(f"\n# ⚠️ 전역 폭 편차 — 편차가 있는 텍스트 {side}/{len(deviating)} 개가 같은 방향으로 {narrow} "
+                  f"(median width_ratio {med_wr:.3f}).")
+            print("#    개별 임계로는 안 걸리는 크기다. 픽셀이 아니라 **선언값**을 대조할 것 — "
+                  "Figma REST `style.letterSpacing`(노드별) vs 코드의 letterSpacing/tracking.")
+            flagged.append(("<전역>", "systematic", round(med_wr, 3)))
     print(f"\n# 글리프 폭/굵기 후보 {len(flagged)}개" + ("" if flagged else " — glyph 정합 OK"))
 
 

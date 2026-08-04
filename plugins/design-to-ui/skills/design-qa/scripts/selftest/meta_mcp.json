@@ -1,0 +1,52 @@
+{
+  "id": "122:533",
+  "name": "TrackSelect / light / unselected",
+  "type": "FRAME",
+  "absoluteBoundingBox": { "x": 1000, "y": 2000, "width": 360, "height": 780 },
+  "children": [
+    {
+      "id": "122:540", "name": "Title", "type": "TEXT",
+      "absoluteBoundingBox": { "x": 1016, "y": 2024, "width": 184, "height": 20 },
+      "fills": [{ "type": "SOLID", "visible": true, "color": { "r": 0.102, "g": 0.102, "b": 0.102 } }]
+    },
+    {
+      "id": "122:551", "name": "Card", "type": "FRAME",
+      "absoluteBoundingBox": { "x": 1016, "y": 2140, "width": 328, "height": 120 },
+      "children": [
+        {
+          "id": "122:552", "name": "icon / bookmark", "type": "INSTANCE",
+          "absoluteBoundingBox": { "x": 1030, "y": 2590, "width": 20, "height": 20 }
+        }
+      ]
+    },
+    {
+      "id": "122:560", "name": "Divider", "type": "RECTANGLE",
+      "absoluteBoundingBox": { "x": 1000, "y": 2280, "width": 360, "height": 1 }
+    },
+    {
+      "id": "122:561", "name": "Divider", "type": "LINE",
+      "absoluteBoundingBox": { "x": 1000, "y": 2400, "width": 360, "height": 1 }
+    },
+    {
+      "id": "122:570", "name": "arrow", "type": "VECTOR",
+      "absoluteBoundingBox": { "x": 1300, "y": 2032, "width": 8, "height": 12 }
+    },
+    {
+      "id": "122:580", "name": "Hidden thing", "type": "VECTOR", "visible": false,
+      "absoluteBoundingBox": { "x": 1100, "y": 2100, "width": 16, "height": 16 }
+    },
+    {
+      "id": "122:590", "name": "Big banner", "type": "INSTANCE",
+      "absoluteBoundingBox": { "x": 1016, "y": 2700, "width": 328, "height": 64 }
+    },
+    {
+      "id": "122:595", "name": "Caption", "type": "TEXT",
+      "absoluteBoundingBox": { "x": 1016, "y": 2320, "width": 200, "height": 16 },
+      "fills": [{ "type": "SOLID", "color": { "r": 0.6, "g": 0.6, "b": 0.6 } }]
+    },
+    {
+      "id": "999:1", "name": "Node from another frame", "type": "VECTOR",
+      "absoluteBoundingBox": { "x": 5000, "y": 9000, "width": 24, "height": 24 }
+    }
+  ]
+}

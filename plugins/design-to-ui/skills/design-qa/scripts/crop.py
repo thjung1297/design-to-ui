@@ -18,6 +18,11 @@ artifact 로 "틀어짐" 오판이 난다. 모드:
            dumpsys 좌표·수동 박스·기기별 상수 없이 동작한다. 프레임 전체를 단일 (dx,dy) 로만
            평행이동해 맞추므로, 카드·패널 외곽 같은 안정 구조가 정렬을 지배하고 요소별 오차는
            그대로 남아 판정에 드러난다(오차를 숨기지 않는다).
+           ⚠️ **dp 논리 크기가 다르면 auto 를 쓰지 말 것.** auto 는 content 를 맞추려고 **오프셋을
+              만들어낸다**(실측: 360dp 프레임 vs 411dp 기기에서 `box=(0,50,1080,2390)` — 상단 50px 을
+              잘라 억지 정합하고 성공으로 보고한다). 스케일 후보 서치도 dp 불일치를 "density 차이"로
+              흡수해버려 오차를 숨긴다. **뷰포트 정규화(SKILL 0단계, `viewport.py`)가 먼저다** — 그
+              뒤에 auto 는 순수한 위치 매칭으로만 동작한다.
 
   anchor — 임베드 TaskView 등. Figma 의 고정 요소(닫기 X 버튼) 를 앵커로 패널 top-left 를 역산.
                panel_topleft = (X_cap - X_fig_section_relative)
@@ -33,6 +38,10 @@ usage:
     python3 crop.py anchor <cap.png> <out.png> --cap-anchor 2470,150 --fig-anchor 1620,60 --panel-size 1700,1184 [--figma f.png]
     python3 crop.py box    <cap.png> <out.png> --box 840,96,2540,1280 [--figma f.png]
 """
+# `str | None` 등 PEP 604 애노테이션이 3.9 에서 def 시점에 평가되어 TypeError 로 죽는 것을 막는다
+# (macOS 시스템 python3 = 3.9.6. Pillow 가 깔려 있어도 import 직후 크래시했다).
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess
@@ -79,6 +88,24 @@ def frame_box(package: str, activity: str | None, serial: str | None) -> tuple[i
               "잘못 crop함. 의심되면 `crop.py auto <cap> <figma> <out>` 사용(또는 --figma 게이트로 검산).",
               file=sys.stderr)
     return box
+
+
+def open_flat(path: str, bg=(255, 255, 255)) -> Image.Image:
+    """이미지를 열되 **투명 픽셀을 bg 로 합성**한다.
+
+    ⚠️ Figma 프레임은 보통 라운드 코너라 export PNG 의 코너가 투명하다. 그냥 열어 `convert("L")` 하면
+    투명이 **검정**이 되어 엣지 매칭·SAD 정렬이 그 가짜 엣지에 끌려간다 — 실측: 정규화된(dp 일치) 캡처에서
+    정합 게이트가 `dy+16` 오프셋을 보고했는데, 원인은 crop 이 아니라 코너 아티팩트였다.
+    """
+    im = Image.open(path)
+    if im.mode not in ("RGBA", "LA", "P"):
+        return im
+    im = im.convert("RGBA")
+    if im.getchannel("A").getextrema()[0] == 255:
+        return im.convert("RGB")
+    flat = Image.new("RGB", im.size, bg)
+    flat.paste(im, (0, 0), im)
+    return flat
 
 
 # ── content 기반 자동 정렬 (auto 모드 & 게이트 공용) ───────────────────────────
@@ -202,14 +229,24 @@ def global_offset(real: Image.Image, fig: Image.Image) -> tuple[int, int, float,
 
 def gate(out_path: str, figma_path: str) -> bool:
     """crop 후 정합 게이트: figma 대비 전역 오프셋이 임계 초과면 경고. (True=경고)"""
-    dx, dy, base, score = global_offset(Image.open(out_path), Image.open(figma_path))
+    # figma 는 투명 코너를 배경색으로 합성해서 넘긴다 — 안 하면 코너 검정이 정렬을 끌어당긴다.
+    dx, dy, base, score = global_offset(open_flat(out_path), open_flat(figma_path))
     drift = max(abs(dx), abs(dy))
     warn = drift > GATE_THR_PX and (base - score) > 0.5
     if warn:
         print(f"⚠️  정합 게이트: 전역 오프셋 ~dx{dx:+d},dy{dy:+d} (>{GATE_THR_PX}px) 감지 "
               f"— crop 박스가 어긋났을 수 있음. `crop.py auto <cap> <figma> <out>` 재시도 권장.")
+        # 두 이미지 크기가 같으면 crop 은 정확했을 가능성이 크고, 이 오프셋은 **실제 콘텐츠 드리프트**다.
+        # 실측: 뷰포트를 정규화한 뒤 이 게이트가 dy+16(5.33dp)을 보고했고, 원인은 crop 이 아니라
+        # 앱 콘텐츠가 정말 그만큼 밀린 것이었다(411dp 상태에서는 resize 가 흡수해 게이트가 OK 였다).
+        if Image.open(out_path).size == Image.open(figma_path).size:
+            print("    (단 crop 결과와 figma 크기가 같다 — crop 오류가 아니라 콘텐츠가 실제로 밀린 것일 수 있다. "
+                  "요소별 세로 오프셋이 일정하면 텍스트 메트릭·상단 패딩 쪽을 본다.)")
     else:
-        print(f"정합 게이트 OK (전역 오프셋 ≤{GATE_THR_PX}px).")
+        # ⚠️ 이 게이트는 **픽셀만** 본다. dp 논리 크기가 달라도 density 가 상쇄해 통과한다(실측: 360dp
+        # 프레임 vs 411dp 기기에서 OK). "정합 게이트 OK"를 dp 정합의 근거로 쓰지 말 것.
+        print(f"정합 게이트 OK (전역 오프셋 ≤{GATE_THR_PX}px). "
+              f"— 픽셀 기준이다. dp 논리 크기 일치는 별도 확인(SKILL 0단계 / overlay.py --figma-dp/--real-dp).")
     return warn
 
 
@@ -248,7 +285,7 @@ def main() -> None:
     im = Image.open(a.cap)
 
     if a.mode == "auto":
-        fig = Image.open(a.figma)
+        fig = open_flat(a.figma)
         region = tuple(int(v) for v in a.search.split(",")) if a.search else None
         scales = tuple(int(v) for v in a.scales.split(","))
         cand = tuple(float(v) for v in a.scale_candidates.split(","))
@@ -256,6 +293,13 @@ def main() -> None:
         box = (max(0, L), max(0, T), min(im.width, R), min(im.height, B))
         im.crop(box).save(a.out)
         print(f"crop auto box={box} scale={s:g} score={score:.3f} -> {a.out} ({box[2]-box[0]}x{box[3]-box[1]})")
+        # 억지 정합 신호: 캡처 변을 잘라 들어간 박스거나 스케일 후보가 1이 아니면 dp 불일치 의심.
+        trimmed = box[1] > 0 or box[0] > 0 or box[3] < im.height or box[2] < im.width
+        if trimmed or s != 1:
+            print("⚠️  auto 가 오프셋/스케일을 만들어 맞췄다"
+                  f"{' (변을 잘라 들어감)' if trimmed else ''}{f' (scale={s:g})' if s != 1 else ''}. "
+                  "뷰포트 dp 가 Figma 프레임과 다르면 auto 는 이렇게 **억지 정합**하고 성공으로 보고한다 "
+                  "— SKILL 0단계(viewport.py)로 dp 를 먼저 맞췄는지 확인할 것.")
         return
 
     if a.mode == "frame":
