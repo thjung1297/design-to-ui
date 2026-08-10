@@ -33,7 +33,7 @@ artifact 로 "틀어짐" 오판이 난다. 모드:
 전역 best (dx,dy) 가 임계(±3px) 초과면 "crop 오프셋 의심" 경고 → auto 재시도를 권한다.
 
 usage:
-    python3 crop.py frame  <cap.png> <out.png> --package com.nhn.android.search [--activity MainActivity] [--serial S] [--figma f.png]
+    python3 crop.py frame  <cap.png> <out.png> --package com.example.sampleapp [--activity MainActivity] [--serial S] [--figma f.png]
     python3 crop.py auto   <cap.png> <figma.png> <out.png> [--search L,T,R,B] [--scales 8,2] [--scale-candidates 1,2,3,1.5,0.5,0.75]
     python3 crop.py anchor <cap.png> <out.png> --cap-anchor 2470,150 --fig-anchor 1620,60 --panel-size 1700,1184 [--figma f.png]
     python3 crop.py box    <cap.png> <out.png> --box 840,96,2540,1280 [--figma f.png]

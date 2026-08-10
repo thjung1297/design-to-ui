@@ -109,18 +109,18 @@ def run():
         crop._dumpsys_windows = lambda serial: dump
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            box = crop.frame_box("com.nhn.android.search", "MainActivity", None)
+            box = crop.frame_box("com.example.sampleapp", "MainActivity", None)
         return box, ("⚠️" in err.getvalue())
 
     # F1 구 포맷 (한 줄, 콤마 4개)
-    b, c = frame_of("x com.nhn.android.search/com.nhn.android.search.MainActivity, frame=[840,96,2540,1280] y")
+    b, c = frame_of("x com.example.sampleapp/com.example.sampleapp.MainActivity, frame=[840,96,2540,1280] y")
     check("F1 frame 구포맷(comma)", b == (840, 96, 2540, 1280) and not c, f"{b} caution={c}")
     # F2 현행 포맷 (멀티라인, 대괄호 쌍)
-    b, c = frame_of("Window{a u10 com.nhn.android.search/com.nhn.android.search.MainActivity}:\n"
+    b, c = frame_of("Window{a u10 com.example.sampleapp/com.example.sampleapp.MainActivity}:\n"
                     "  Frames: parent=[0,0][2560,1440] display=[0,0][2560,1440] frame=[840,96][2540,1280] last=[..]\n")
     check("F2 frame 현행포맷(bracket-pair)", b == (840, 96, 2540, 1280) and not c, f"{b} caution={c}")
     # F3 임베디드 로컬좌표 (원점 0,0) → 매칭하되 caution
-    b, c = frame_of("Window{a u10 com.nhn.android.search/com.nhn.android.search.MainActivity}:\n"
+    b, c = frame_of("Window{a u10 com.example.sampleapp/com.example.sampleapp.MainActivity}:\n"
                     "  Frames: display=[0,0][1700,1184] frame=[0,0][1700,1184]\n")
     check("F3 임베디드(0,0) 가드 경고", b == (0, 0, 1700, 1184) and c, f"{b} caution={c}")
 
