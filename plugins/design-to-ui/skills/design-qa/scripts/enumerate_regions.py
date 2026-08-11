@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 """design-qa: probe region 열거 — 무엇을 검사할지를 Figma 노드에서 **기계적으로** 정한다.
 
 왜 필요한가. `glyph_id_probe`·`glyph_probe`·`color_probe`·`edge_probe` 는 모두 `--regions "name:L,T,R,B"`

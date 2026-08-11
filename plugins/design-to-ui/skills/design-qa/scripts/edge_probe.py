@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 """design-qa: 엣지·full-bleed probe — 얇은 선/보더가 **어디서 시작해 어디서 끝나는지**를 좌표로 대조.
 
 이 probe 가 따로 있는 이유는 면적 평균 계열 지표가 이 오차를 **원리적으로** 못 보기 때문이다(실측):

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 """design-qa: 뷰포트 dp 정규화 (Android) — 캡처 **전에** 기기의 dp 논리 크기를 Figma 프레임에 맞춘다.
 
 **왜 캡처보다 먼저인가.** Figma 프레임(예 360×780dp)과 기기(예 411×914dp)의 dp 가 다르면 레이아웃이

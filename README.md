@@ -27,7 +27,7 @@ generate-project-design-system 스킬로 이 프로젝트에 맞는 초안을 �
 ### 🎉 Contribution을 환영합니다! (Web·Flutter 확장, 버그 수정 등) Fork 후 Pull Request를 보내주세요 🎉
 > 설치 후 사용 중 **gotcha·이슈·문의·공유거리**가 생기면 `/discussion` — 세션을 자동 요약해 우리 Discussions에 분류·등록합니다(등록 전 확인).
 
-Figma 공식 `implement-design` 스킬의 7-Step 구조를 베이스로, 네이티브 변환에 필요한 로직(에셋 A/B/C 분류, 동적 비주얼, 디자인 시스템 토큰 매핑, 에셋 파이프라인)을 추가했습니다. **Step 1·2·3·7은 플랫폼 공통**이고, **Step 4·5(에셋)·6(코드 생성)만 플랫폼별로 분기**합니다 — 공통 절차는 spine에 한 벌만 두고, 에셋 사양(작음)은 SKILL.md Step 4의 플랫폼 표로, 코드 변환 규칙(큼)은 `references/<platform>/`로 분리합니다.
+네이티브 변환에 필요한 로직(에셋 A/B/C 분류, 동적 비주얼, 디자인 시스템 토큰 매핑, 에셋 파이프라인)을 7-Step 파이프라인으로 구성했습니다. **Step 1·2·3·7은 플랫폼 공통**이고, **Step 4·5(에셋)·6(코드 생성)만 플랫폼별로 분기**합니다 — 공통 절차는 spine에 한 벌만 두고, 에셋 사양(작음)은 SKILL.md Step 4의 플랫폼 표로, 코드 변환 규칙(큼)은 `references/<platform>/`로 분리합니다.
 
 ## 스킬 구성
 
@@ -212,6 +212,16 @@ Design-To-UI/
 ```
 
 > **참고:** `project-design-system`은 각 프로젝트의 `.claude/skills/project-design-system/SKILL.md`에 위치합니다.
+
+## 고지 (Notice)
+
+본 프로젝트는 Figma가 공개한 implement-design skill의 절차적 아이디어를 고수준에서 참고하였으며, 세부 설계 및 구현은 당사가 독자적으로 수행하였습니다. 본 프로젝트는 Figma의 소스코드, skill 문서, 문서 텍스트 또는 기타 Figma Developer Resources를 복제, 수정, 포함 또는 재배포하지 않습니다.
+
+본 프로젝트는 Figma, Inc.와 제휴, 후원 또는 승인 관계에 있지 않습니다. "Figma" 및 관련 표장은 Figma, Inc.의 상표입니다.
+
+This project was independently developed by NAVER, with only high-level reference to implement-design skill's 7-step structure idea. It does not copy, modify, include, or redistribute any Figma source code, skill text, documentation text, or other Figma Developer Resources.
+
+Figma and related marks are trademarks of Figma, Inc. This project is not affiliated with, endorsed by, or sponsored by Figma, Inc.
 
 ## 관련 링크
 

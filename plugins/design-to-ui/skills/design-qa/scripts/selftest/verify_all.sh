@@ -1,4 +1,7 @@
 #!/bin/bash
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 # design-qa 측정기 오프라인 셀프테스트 — 에뮬레이터·Figma 토큰·adb 불필요.
 #
 # 합성 픽스처로 "측정기가 이 오차를 잡는가"를 검사한다. 다루는 사각은 discussion #181(뷰포트 dp 불일치)·

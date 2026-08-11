@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 """viewport.py 오프라인 검증 — adb 를 가짜로 갈아끼워 사다리 분기·원복·오버라이드 실패를 검사한다.
 
 기기 없이 검증 가능한 항목: #181 검증법 4번(정규화된 환경에서 불필요한 조작 안 함) / 5번(원복 실행).

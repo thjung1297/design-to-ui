@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Design-To-UI
+# Copyright (c) 2026-present NAVER Corp.
+# Apache-2.0
 """design-qa 사각 재현용 합성 픽스처 — 에뮬레이터 없이 측정기 자체만 검증한다.
 
 #186 (얇은 옅은색 구분선 full-bleed→패딩) + #187 (아이콘 10% 축소) 재현 + golden(정상) 픽스처.

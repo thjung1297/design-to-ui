@@ -1,6 +1,6 @@
 ---
 name: design-to-ui
-description: Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit)로 변환하는 7-Step 워크플로우. 노드 추출·디자인 컨텍스트·검증(Step 1·2·3·7)은 플랫폼 공통이고, 에셋(Step 4·5)과 코드 생성(Step 6)만 플랫폼별 reference로 분기한다. implement-design 구조 기반에 에셋 A/B/C 분류, 동적 비주얼, project-design-system 위임, 플랫폼 에셋 파이프라인을 추가. Figma URL이나 UI 변환 요청 시 이 스킬을 사용하세요.
+description: Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit)로 변환하는 7-Step 워크플로우. 노드 추출·디자인 컨텍스트·검증(Step 1·2·3·7)은 플랫폼 공통이고, 에셋(Step 4·5)과 코드 생성(Step 6)만 플랫폼별 reference로 분기한다. 에셋 A/B/C 분류, 동적 비주얼, project-design-system 위임, 플랫폼 에셋 파이프라인을 포함한다. Figma URL이나 UI 변환 요청 시 이 스킬을 사용하세요.
 license: Apache-2.0
 metadata:
   author: NAVER
@@ -156,7 +156,7 @@ get_screenshot(nodeId="1234-5678")
 
 ### Step 4: 에셋 분류 ★ (공통 골격 + 플랫폼 분기)
 
-implement-design과 다른 **design-to-ui 고유 단계**입니다. Figma MCP가 반환하는 localhost 이미지 URL은 세션 종료 시 만료되므로, 에셋을 분류하여 적절히 처리합니다.
+Figma MCP가 반환하는 localhost 이미지 URL은 세션 종료 시 만료되므로, 에셋을 분류하여 적절히 처리합니다.
 
 design_context의 모든 시각 요소를 확인하여 세 유형으로 분류합니다 — 이 **A/B/C 분류 개념은 플랫폼 공통**입니다.
 
