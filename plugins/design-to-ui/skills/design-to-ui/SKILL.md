@@ -1,12 +1,12 @@
 ---
 name: design-to-ui
-description: Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit)로 변환하는 7-Step 워크플로우. 노드 추출·디자인 컨텍스트·검증(Step 1·2·3·7)은 플랫폼 공통이고, 에셋(Step 4·5)과 코드 생성(Step 6)만 플랫폼별 reference로 분기한다. 에셋 A/B/C 분류, 동적 비주얼, project-design-system 위임, 플랫폼 에셋 파이프라인을 포함한다. Figma URL이나 UI 변환 요청 시 이 스킬을 사용하세요.
+description: Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit, Flutter Widgets)로 변환하는 7-Step 워크플로우. 노드 추출·디자인 컨텍스트·검증(Step 1·2·3·7)은 플랫폼 공통이고, 에셋(Step 4·5)과 코드 생성(Step 6)만 플랫폼별 reference로 분기한다. 에셋 A/B/C 분류, 동적 비주얼, project-design-system 위임, 플랫폼 에셋 파이프라인을 포함한다. Figma URL이나 UI 변환 요청 시 이 스킬을 사용하세요.
 license: Apache-2.0
 metadata:
   author: NAVER
-  version: "10.0"
+  version: "10.1"
   requires: [project-design-system, figma-asset-download]
-  platform: [android, ios]
+  platform: [android, ios, flutter]
 ---
 
 # Design to UI
@@ -14,17 +14,17 @@ metadata:
 Figma 디자인을 네이티브 UI로 1:1 시각 충실도로 변환하는 워크플로우입니다.
 Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 에셋을 분류·변환하며, 프로젝트 디자인 시스템을 적용합니다.
 
-**지원 플랫폼:** Android(Jetpack Compose / XML Layout), iOS(SwiftUI / UIKit)
+**지원 플랫폼:** Android(Jetpack Compose / XML Layout), iOS(SwiftUI / UIKit), Flutter(Flutter Widgets)
 
 ## 공통 spine vs 플랫폼 분기
 
 7-Step 중 **Step 1·2·3·7은 플랫폼 공통**(노드·컨텍스트·검증)이며, **Step 4·5(에셋)·6(코드 생성)만 플랫폼별로 분기**합니다. 공통 절차는 spine에 한 벌만 두고, 플랫폼 delta만 분기합니다 — **Step 6 코드 변환 규칙**은 분량이 커서 `references/<platform>/`에 두고, **Step 4·5 에셋 사양**은 작아서 Step 4의 플랫폼 표로 인라인합니다. 새 플랫폼은 spine을 그대로 두고 에셋 표 1행 + 코드 reference + 변환 스크립트만 추가하면 됩니다.
 
-| 영역 | Android | iOS |
-|------|---------|-----|
-| Step 4·5 에셋 사양 | Step 4 플랫폼 표 + `scripts/android/convert_assets.sh` | Step 4 플랫폼 표 + `scripts/ios/convert_assets.sh` |
-| Step 6 코드 (선택지 1) | `references/android/compose.md` | `references/ios/swiftui.md` |
-| Step 6 코드 (선택지 2) | `references/android/xml.md` | `references/ios/uikit.md` |
+| 영역 | Android | iOS | Flutter |
+|------|---------|-----|---------|
+| Step 4·5 에셋 사양 | Step 4 플랫폼 표 + `scripts/android/convert_assets.sh` | Step 4 플랫폼 표 + `scripts/ios/convert_assets.sh` | Step 4 플랫폼 표 + `scripts/flutter/convert_assets.sh` |
+| Step 6 코드 (선택지 1) | `references/android/compose.md` | `references/ios/swiftui.md` | `references/flutter/flutter.md` |
+| Step 6 코드 (선택지 2) | `references/android/xml.md` | `references/ios/uikit.md` | — (Flutter는 단일) |
 
 ## Prerequisites
 
@@ -84,10 +84,13 @@ Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 
 2. **변환 대상 화면 파일 기준 자동 판별:** 힌트가 없으면 프로젝트 코드를 검색한다(아래 신호 표). **판별 단위는 모듈 전역이 아니라 "변환 결과를 넣을 대상 화면/파일"이다.** 대상 화면이 단일 프레임워크면 — 프로젝트 전체가 Compose+XML 또는 SwiftUI+UIKit으로 혼재하더라도 — 대상 화면의 프레임워크로 확정한다. (전역 grep으로 먼저 잡힌 프레임워크로 임의 확정하지 않는다.)
 3. **모호 시 질문 (임의 선택 금지):** 대상 화면이 불명확하거나(어디에 넣을지 미지정) 단일 프레임워크로 좁혀지지 않으면 — **사용자에게 어느 플랫폼·프레임워크로 변환할지 묻는다.**
 
+**판별 우선순위 (Flutter 오판 방지):** Flutter 프로젝트는 `android/`·`ios/` 하위에 Gradle·xcodeproj를 포함하므로, **루트에 `pubspec.yaml`+`lib/` Dart 코드가 있으면 Android/iOS 신호보다 Flutter로 우선 확정**한다. 변환 대상 파일이 `android/`·`ios/` 하위 네이티브 코드로 명시된 경우에만 해당 네이티브 플랫폼으로 본다.
+
 | 플랫폼 | 판별 신호 | 프레임워크 분기 |
 |--------|-----------|------------------|
 | **Android** | `build.gradle(.kts)`, `AndroidManifest.xml`, `*.kt` | Compose(`@Composable`/`setContent`) → `references/android/compose.md` · XML(`*.xml` 레이아웃/`findViewById`) → `references/android/xml.md` |
 | **iOS** | `*.xcodeproj`/`*.xcworkspace`, `Package.swift`, `*.swift` | SwiftUI(`View`/`some View`/`@main App`) → `references/ios/swiftui.md` · UIKit(`UIViewController`/storyboard) → `references/ios/uikit.md` |
+| **Flutter** | 루트 `pubspec.yaml`, `lib/**/*.dart`, `pubspec.yaml` 내 `flutter:` 의존 | 단일(프레임워크 분기 없음) → `references/flutter/flutter.md` |
 
 ---
 
@@ -186,12 +189,12 @@ design_context의 모든 시각 요소를 확인하여 세 유형으로 분류�
 
 > **에셋 최종 형식은 `project-design-system`을 우선 따른다 (Android·iOS 공통).** PDS(`.claude/skills/project-design-system`)에 에셋 형식 규칙(예: iOS `PNG @1x/2x/3x`)이 명시돼 있으면 그대로 따르고, 없으면 아래 표의 기본 변환 스크립트를 쓴다. 기본과 다른 배율·형식이 필요하면 로컬 업스케일 대신 Figma에서 해당 배율로 재추출한다(REST `format=png&scale=1|2|3`).
 
-| 항목 | Android | iOS |
-|------|---------|-----|
-| 기존 리소스 목록 (Glob) | `**/res/drawable*/*.xml`, `**/res/drawable*/*.webp` (qualifier 폴더 `drawable-*` 포함) | `**/*.xcassets/**` (+ 단색 아이콘은 SF Symbols 대체 검토) |
-| 유형 A 변환·배치 (기본값) | `scripts/android/convert_assets.sh` → `res/drawable/ic_*.xml`(VectorDrawable)·`img_*.webp` | `scripts/ios/convert_assets.sh` → `Assets.xcassets/<name>.imageset`(PDF) |
-| 유형 C 실제내용 확인 | drawable XML의 pathData·fillColor·stroke | imageset 이미지 / SF Symbol 형태 |
-| 설치 의존성 | vd-tool · webp · JAVA_HOME | librsvg / cairosvg / inkscape (택1) |
+| 항목 | Android | iOS | Flutter |
+|------|---------|-----|---------|
+| 기존 리소스 목록 (Glob) | `**/res/drawable*/*.xml`, `**/res/drawable*/*.webp` (qualifier 폴더 `drawable-*` 포함) | `**/*.xcassets/**` (+ 단색 아이콘은 SF Symbols 대체 검토) | `assets/**/*.svg`, `assets/**/*.png`, `assets/**/*.webp` + `pubspec.yaml`의 `flutter.assets` 선언 목록 (아이콘 위젯 상수 파일이 있으면 함께 — PDS 위임) |
+| 유형 A 변환·배치 (기본값) | `scripts/android/convert_assets.sh` → `res/drawable/ic_*.xml`(VectorDrawable)·`img_*.webp` | `scripts/ios/convert_assets.sh` → `Assets.xcassets/<name>.imageset`(PDF) | `scripts/flutter/convert_assets.sh` → `assets/icons/ic_*.svg`(원본 SVG 유지, flutter_svg 렌더)·`assets/images/2.0x/img_*.png`(다운로드 scale=2 → resolution-aware variant 자리; main 파일 없이 pubspec 디렉터리 선언만으로 번들·fallback) |
+| 유형 C 실제내용 확인 | drawable XML의 pathData·fillColor·stroke | imageset 이미지 / SF Symbol 형태 | SVG 파일을 `Read`로 열어 path·fill 확인 / PNG는 이미지 디코드로 확인 |
+| 설치 의존성 | vd-tool · webp · JAVA_HOME | librsvg / cairosvg / inkscape (택1) | 없음(복사·검증만). 렌더 의존성 `flutter_svg`는 Step 6에서 pubspec 확인 |
 
 > 유형 B(동적 비주얼)를 코드로 그리는 방법은 플랫폼·프레임워크마다 다르므로 Step 6 코드 reference(compose/xml/swiftui/uikit)를 따른다.
 
@@ -229,6 +232,9 @@ bash "${CLAUDE_SKILL_DIR}/scripts/android/convert_assets.sh" /tmp/figma_type_a a
 
 # iOS: SVG→PDF, PNG→imageset (둘 다 Asset Catalog .imageset 생성)
 bash "${CLAUDE_SKILL_DIR}/scripts/ios/convert_assets.sh" /tmp/figma_type_a <App>/Assets.xcassets
+
+# Flutter: SVG → assets/icons/, PNG(@2x) → assets/images/2.0x/ (img_* 리네임)
+bash "${CLAUDE_SKILL_DIR}/scripts/flutter/convert_assets.sh" /tmp/figma_type_a <project_root>
 ```
 
 유형 A 리소스가 모두 배치되고, 유형 B 파라미터를 확인한 뒤 Step 6으로 진행합니다.
@@ -247,6 +253,7 @@ Step 0에서 판별한 플랫폼·프레임워크의 reference를 `Read`로 읽�
 | Android | XML Layout | `${CLAUDE_SKILL_DIR}/references/android/xml.md` |
 | iOS | SwiftUI | `${CLAUDE_SKILL_DIR}/references/ios/swiftui.md` |
 | iOS | UIKit | `${CLAUDE_SKILL_DIR}/references/ios/uikit.md` |
+| Flutter | Flutter Widgets | `${CLAUDE_SKILL_DIR}/references/flutter/flutter.md` |
 
 Step 2의 React 컴포넌트 계층·Tailwind 수치를 그대로 네이티브 코드로 1:1 변환한다.
 
@@ -263,7 +270,7 @@ Step 2의 React 컴포넌트 계층·Tailwind 수치를 그대로 네이티브 �
 - [ ] **컴포넌트 호출 전수 대조**: design_context의 메인 export 함수에서 호출하는 모든 자식 컴포넌트(래퍼 포함)가 구현 코드에 대응하는 UI 요소가 있는지 확인
 - [ ] 레이아웃 일치 (간격, 정렬, 크기 — React 코드의 수치와 비교)
 - [ ] 타이포그래피 일치 (폰트, 크기, 굵기, line height)
-- [ ] **스크롤/overflow 동작:** 고정 높이를 넘기는 리스트가 실제로 스크롤되는가 — 스크롤 축에 bounded 제약 확보(Compose `verticalScroll`/`LazyColumn`, XML `ScrollView`/`RecyclerView`, SwiftUI `ScrollView`, UIKit `UIScrollView`/`UICollectionView`). 잘리거나 스크롤 안 되는 영역 없음
+- [ ] **스크롤/overflow 동작:** 고정 높이를 넘기는 리스트가 실제로 스크롤되는가 — 스크롤 축에 bounded 제약 확보(Compose `verticalScroll`/`LazyColumn`, XML `ScrollView`/`RecyclerView`, SwiftUI `ScrollView`, UIKit `UIScrollView`/`UICollectionView`, Flutter `SingleChildScrollView`/`ListView`). 잘리거나 스크롤 안 되는 영역 없음
 - [ ] 유형 A 에셋 파일 존재 (플랫폼 리소스 경로에 배치됨)
 - [ ] 유형 B 동적 비주얼 파라미터가 SVG 원본과 일치 (stroke-width, arc 각도, gradient)
 - [ ] 유형 C 매핑 정확성: 기존 리소스의 **실제 형태**가 스크린샷의 해당 아이콘과 일치하는지 재확인
