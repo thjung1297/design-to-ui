@@ -38,8 +38,8 @@ argument-hint: <figma_link>
 
 코드 편집은 `figma-diff-apply`(Section 2)의 책임이고, 이 단계는 **빌드 게이트**만 담당한다 — 이 커맨드는 직접 코드를 수정하지 않는다.
 
-- 코드 수정 완료 후 **전체 빌드 실행** — 리소스 머지·패키징까지 포함(Android Gradle이면 `assemble{Variant}Debug` 수준, 프로젝트 표준 debug 빌드). 출력은 `tail` 등으로 에러만 추려 읽어 컨텍스트를 가볍게 유지.
-  - ⚠️ `compileKotlin`/`compile*` 같은 **부분 컴파일 검사로 대체 금지** — 신규 에셋·drawable 누락, 리소스 병합 오류 등은 전체 빌드에서만 드러난다.
+- 코드 수정 완료 후 **전체 빌드 실행** — 리소스 머지·패키징까지 포함(Android Gradle이면 `assemble{Variant}Debug` 수준, 프로젝트 표준 debug 빌드. **Flutter면** `flutter build apk --debug`(Android 타겟) / `flutter build ios --simulator`(iOS 타겟)). 출력은 `tail` 등으로 에러만 추려 읽어 컨텍스트를 가볍게 유지.
+  - ⚠️ `compileKotlin`/`compile*` 같은 **부분 컴파일 검사로 대체 금지**(Flutter는 `flutter analyze` 만으로 대체 금지) — 신규 에셋·drawable 누락, 리소스 병합 오류 등은 전체 빌드에서만 드러난다.
 - **빌드 성공** → 4번 "빌드 성공 시"로 분기.
 - **빌드 실패** → 빌드 에러 출력을 **`figma-diff-apply` 스킬에 다시 위임**해 수정한다(에러 분석·코드 편집은 스킬이 담당 — 스킬은 이미 들고 있는 `design_context`·편집 원칙을 그대로 재사용). 스킬이 수정을 반환하면 **재빌드**. 최대 3회 반복.
   - 3회 내 성공 → 4번 "빌드 성공 시"

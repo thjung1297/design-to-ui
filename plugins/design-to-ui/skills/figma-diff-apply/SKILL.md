@@ -8,7 +8,7 @@ metadata:
   version: "2.0"
   requires: [figma-asset-download]
   optional: [project-design-system]
-  platform: android
+  platform: [android, flutter]
 ---
 
 # figma-diff-apply

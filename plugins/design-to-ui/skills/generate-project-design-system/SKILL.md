@@ -21,8 +21,8 @@ Figma MCP `create_design_system_rules` 호출하여 분석 항목 체크리스�
 
 ```
 create_design_system_rules(
-  clientLanguages = "<프로젝트 언어>",   // kotlin,xml / typescript / swift 등
-  clientFrameworks = "<프레임워크>"       // android,jetpack-compose / react / swiftui 등
+  clientLanguages = "<프로젝트 언어>",   // kotlin,xml / typescript / swift / dart 등
+  clientFrameworks = "<프레임워크>"       // android,jetpack-compose / react / swiftui / flutter 등
 )
 ```
 
@@ -50,6 +50,7 @@ Figma URL이 없으면 사용자에게 '토큰 패턴 추론에 필요하니 제
 **Android (Compose):** `colorResource`, `MaterialTheme.colorScheme`, 커스텀 테마 등 색상 참조 패턴
 **iOS (SwiftUI):** `Color("...")`, `Asset Catalog`, 커스텀 Color extension
 **Web (React):** CSS variables, Tailwind config, styled-components theme 등
+**Flutter:** `ThemeData`/`ColorScheme`, 커스텀 `AppColors`류 상수 클래스, `Color(0xFF…)` 하드코딩 여부
 
 **도출할 것:** Figma 토큰 키(kebab-case) → 코드 토큰명 변환 규칙
 
@@ -58,6 +59,7 @@ Figma URL이 없으면 사용자에게 '토큰 패턴 추론에 필요하니 제
 **Android:** 커스텀 TextView 클래스, textSize 단위(dp/sp), Compose TextStyle 패턴
 **iOS:** Font system, custom font 사용 방식, Text modifier 패턴
 **Web:** CSS font 시스템, Typography 컴포넌트, font token 참조 방식
+**Flutter:** `TextTheme`, 커스텀 `TextStyle` 상수/확장, `google_fonts` 사용 여부
 
 #### 3-3. 레이아웃/컴포넌트
 
@@ -67,7 +69,7 @@ Figma URL이 없으면 사용자에게 '토큰 패턴 추론에 필요하니 제
 
 #### 3-4. 에셋 최종 형식 (아이콘/이미지)
 
-design-to-ui Step 4·5는 에셋 최종 형식을 PDS에 위임한다(없으면 플랫폼 기본값 — [design-to-ui Step 4 표](./../design-to-ui/SKILL.md) 기준). 코드베이스에서 이 프로젝트가 아이콘/이미지를 **어떤 형식·배율로 두는지** 확인하고(iOS `*.xcassets`, Android `res/drawable*`), **기본값과 다르면** 초안에 간단한 규칙 문구로 명시한다(예: "아이콘·사진 모두 PNG @1x/2x/3x, PDF 미사용"). 같으면 생략. (Android/iOS 공통)
+design-to-ui Step 4·5는 에셋 최종 형식을 PDS에 위임한다(없으면 플랫폼 기본값 — [design-to-ui Step 4 표](./../design-to-ui/SKILL.md) 기준). 코드베이스에서 이 프로젝트가 아이콘/이미지를 **어떤 형식·배율로 두는지** 확인하고(iOS `*.xcassets`, Android `res/drawable*`, Flutter `assets/` + `pubspec.yaml flutter.assets` — SVG(flutter_svg) vs PNG 관행), **기본값과 다르면** 초안에 간단한 규칙 문구로 명시한다(예: "아이콘·사진 모두 PNG @1x/2x/3x, PDF 미사용"). 같으면 생략. (Android/iOS/Flutter 공통)
 
 ### Step 4: 초안 SKILL.md 생성
 
