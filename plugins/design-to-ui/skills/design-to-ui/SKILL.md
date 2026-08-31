@@ -84,7 +84,7 @@ Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 
 2. **변환 대상 화면 파일 기준 자동 판별:** 힌트가 없으면 프로젝트 코드를 검색한다(아래 신호 표). **판별 단위는 모듈 전역이 아니라 "변환 결과를 넣을 대상 화면/파일"이다.** 대상 화면이 단일 프레임워크면 — 프로젝트 전체가 Compose+XML 또는 SwiftUI+UIKit으로 혼재하더라도 — 대상 화면의 프레임워크로 확정한다. (전역 grep으로 먼저 잡힌 프레임워크로 임의 확정하지 않는다.)
 3. **모호 시 질문 (임의 선택 금지):** 대상 화면이 불명확하거나(어디에 넣을지 미지정) 단일 프레임워크로 좁혀지지 않으면 — **사용자에게 어느 플랫폼·프레임워크로 변환할지 묻는다.**
 
-**판별 우선순위 (Flutter 오판 방지):** Flutter 프로젝트는 `android/`·`ios/` 하위에 Gradle·xcodeproj를 포함하므로, **루트에 `pubspec.yaml`+`lib/` Dart 코드가 있으면 Android/iOS 신호보다 Flutter로 우선 확정**한다. 변환 대상 파일이 `android/`·`ios/` 하위 네이티브 코드로 명시된 경우에만 해당 네이티브 플랫폼으로 본다.
+**판별 우선순위 (Flutter 오판 방지):** Flutter 프로젝트는 `android/`·`ios/` 하위에 Gradle·xcodeproj를 포함하므로, **루트 `pubspec.yaml`에 Flutter SDK 의존(`dependencies:`→`flutter:`→`sdk: flutter`)이 선언돼 있고 `lib/` Dart 코드가 있으면 Android/iOS 신호보다 Flutter로 우선 확정**한다. `pubspec.yaml`+`lib/`만 있고 **Flutter SDK 의존이 없으면 순수 Dart 패키지**이므로 Flutter로 확정하지 말고 모호로 처리한다(Step 0 규칙 3). 변환 대상 파일이 `android/`·`ios/` 하위 네이티브 코드로 명시된 경우에만 해당 네이티브 플랫폼으로 본다.
 
 | 플랫폼 | 판별 신호 | 프레임워크 분기 |
 |--------|-----------|------------------|
@@ -192,7 +192,7 @@ design_context의 모든 시각 요소를 확인하여 세 유형으로 분류�
 | 항목 | Android | iOS | Flutter |
 |------|---------|-----|---------|
 | 기존 리소스 목록 (Glob) | `**/res/drawable*/*.xml`, `**/res/drawable*/*.webp` (qualifier 폴더 `drawable-*` 포함) | `**/*.xcassets/**` (+ 단색 아이콘은 SF Symbols 대체 검토) | `assets/**/*.svg`, `assets/**/*.png`, `assets/**/*.webp` + `pubspec.yaml`의 `flutter.assets` 선언 목록 (아이콘 위젯 상수 파일이 있으면 함께 — PDS 위임) |
-| 유형 A 변환·배치 (기본값) | `scripts/android/convert_assets.sh` → `res/drawable/ic_*.xml`(VectorDrawable)·`img_*.webp` | `scripts/ios/convert_assets.sh` → `Assets.xcassets/<name>.imageset`(PDF) | `scripts/flutter/convert_assets.sh` → `assets/icons/ic_*.svg`(원본 SVG 유지, flutter_svg 렌더)·`assets/images/2.0x/img_*.png`(다운로드 scale=2 → resolution-aware variant 자리; main 파일 없이 pubspec 디렉터리 선언만으로 번들·fallback) |
+| 유형 A 변환·배치 (기본값) | `scripts/android/convert_assets.sh` → `res/drawable/ic_*.xml`(VectorDrawable)·`img_*.webp` | `scripts/ios/convert_assets.sh` → `Assets.xcassets/<name>.imageset`(PDF) | `scripts/flutter/convert_assets.sh` → `assets/icons/ic_*.svg`(원본 SVG 유지, flutter_svg 렌더)·`assets/images/2.0x/img_*.png`(다운로드 scale=2 → resolution-aware variant 자리; main 1x 파일을 두지 않으므로 pubspec에 **각 논리 경로**(`assets/images/img_*.png`)를 개별 선언해야 번들된다 — 디렉터리 선언은 직속 파일만 열거) |
 | 유형 C 실제내용 확인 | drawable XML의 pathData·fillColor·stroke | imageset 이미지 / SF Symbol 형태 | SVG 파일을 `Read`로 열어 path·fill 확인 / PNG는 이미지 디코드로 확인 |
 | 설치 의존성 | vd-tool · webp · JAVA_HOME | librsvg / cairosvg / inkscape (택1) | 없음(복사·검증만). 렌더 의존성 `flutter_svg`는 Step 6에서 pubspec 확인 |
 

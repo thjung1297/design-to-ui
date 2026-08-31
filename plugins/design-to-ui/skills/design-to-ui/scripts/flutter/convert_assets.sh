@@ -66,6 +66,7 @@ fi
 
 # ── PNG → assets/images/2.0x/ (ic_ → img_ 리네임) ──
 PNG_PLACED=0
+placed_png_names=()
 if [ "$PNG_COUNT" -gt 0 ]; then
   mkdir -p "$IMAGES_2X_DIR"
   for f in "${pngs[@]}"; do
@@ -75,6 +76,7 @@ if [ "$PNG_COUNT" -gt 0 ]; then
       *)    newname="$base" ;;
     esac
     cp "$f" "$IMAGES_2X_DIR/$newname"
+    placed_png_names+=("$newname")
     PNG_PLACED=$((PNG_PLACED + 1))
   done
   echo "  PNG → $IMAGES_2X_DIR ($PNG_PLACED, ic_→img_)"
@@ -82,18 +84,22 @@ fi
 
 # ── pubspec 선언·의존 검증 (수정하지 않음, WARN만) ──
 WARN_LINES=""
-if [ "$SVG_PLACED" -gt 0 ] || [ "$PNG_PLACED" -gt 0 ]; then
-  MISSING_ASSETS=""
-  if [ "$SVG_PLACED" -gt 0 ] && ! grep -q 'assets/icons/' "$PUBSPEC"; then
-    MISSING_ASSETS="$MISSING_ASSETS    - assets/icons/\n"
-  fi
-  if [ "$PNG_PLACED" -gt 0 ] && ! grep -q 'assets/images/' "$PUBSPEC"; then
-    # 2.0x/ 는 자동 번들이라 검사 대상이 아니다 — main 디렉터리(assets/images/)만 본다.
-    MISSING_ASSETS="$MISSING_ASSETS    - assets/images/\n"
-  fi
-  if [ -n "$MISSING_ASSETS" ]; then
-    WARN_LINES="${WARN_LINES}WARN: pubspec.yaml flutter.assets(flutter:→assets:)에 다음 항목을 추가하세요:\n${MISSING_ASSETS}"
-  fi
+MISSING_ASSETS=""
+# SVG는 assets/icons/ 직속 파일이므로 디렉터리 선언 하나로 충분하다.
+if [ "$SVG_PLACED" -gt 0 ] && ! grep -q 'assets/icons/' "$PUBSPEC"; then
+  MISSING_ASSETS="$MISSING_ASSETS    - assets/icons/\n"
+fi
+# PNG는 2.0x/ variant만 있고 main 1x가 없으므로 디렉터리 선언으로는 번들되지 않는다
+# (flutter_tools는 디렉터리의 직속 파일만 논리 에셋으로 열거) → 각 논리 경로를 개별 선언해야 한다.
+if [ "$PNG_PLACED" -gt 0 ]; then
+  for name in "${placed_png_names[@]}"; do
+    if ! grep -q "assets/images/$name" "$PUBSPEC"; then
+      MISSING_ASSETS="$MISSING_ASSETS    - assets/images/$name\n"
+    fi
+  done
+fi
+if [ -n "$MISSING_ASSETS" ]; then
+  WARN_LINES="${WARN_LINES}WARN: pubspec.yaml flutter.assets(flutter:→assets:)에 다음 항목을 추가하세요:\n${MISSING_ASSETS}"
 fi
 
 if [ "$SVG_PLACED" -gt 0 ] && ! grep -q 'flutter_svg' "$PUBSPEC"; then
