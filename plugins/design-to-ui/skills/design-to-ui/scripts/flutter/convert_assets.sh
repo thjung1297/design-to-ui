@@ -86,11 +86,16 @@ if [ "$PNG_COUNT" -gt 0 ]; then
     case " $UNKNOWN_SCALE_PNGS " in
       *" $base "*)
         mkdir -p "$IMAGES_MAIN_DIR"
+        # 이전 실행에서 같은 논리명이 2.0x(scale=2)로 배치돼 있었다면 제거한다 — 안 지우면
+        # main과 2.0x가 동시에 존재해 고밀도 기기가 오래된 2.0x variant를 계속 선택한다.
+        [ -f "$IMAGES_2X_DIR/$newname" ] && rm -f "$IMAGES_2X_DIR/$newname"
         cp "$f" "$IMAGES_MAIN_DIR/$newname"
         placed_main_png_names+=("$newname")
         ;;
       *)
         mkdir -p "$IMAGES_2X_DIR"
+        # 반대 방향: 이전에 main(1x, 배율 불명)으로 배치됐던 동일 논리명이 있으면 제거한다.
+        [ -f "$IMAGES_MAIN_DIR/$newname" ] && rm -f "$IMAGES_MAIN_DIR/$newname"
         cp "$f" "$IMAGES_2X_DIR/$newname"
         placed_png_names+=("$newname")
         ;;
