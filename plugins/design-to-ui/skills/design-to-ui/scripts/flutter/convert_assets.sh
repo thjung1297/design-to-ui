@@ -10,28 +10,34 @@
 # Step 5에서 download_figma_frame_images.sh로 다운로드한 뒤 이 스크립트를 돌린다.
 #
 # 사용법:
-#   bash convert_assets.sh <input_dir> <project_root>
+#   bash convert_assets.sh <input_dir> <project_root> [unknown_scale_pngs]
 #
 # 예시:
 #   bash .claude/skills/design-to-ui/scripts/flutter/convert_assets.sh \
-#     /tmp/figma_type_a .
+#     /tmp/figma_type_a . "ic_photo.png ic_bg.png"
 #
 # 처리:
-#   SVG (ic_*.svg) → <project_root>/assets/icons/           (파일명 유지, 원본 SVG)
-#   PNG (ic_*.png) → <project_root>/assets/images/2.0x/     (ic_ → img_ 리네임)
-#     다운로드 scale=2 이므로 2.0x variant 자리에 둔다. main(assets/images/*.png)은
+#   SVG (ic_*.svg) → <project_root>/assets/icons/                 (파일명 유지, 원본 SVG)
+#   PNG (ic_*.png) → <project_root>/assets/images/2.0x/           (ic_ → img_ 리네임, 기본값)
+#     다운로드 scale=2 이므로 2.0x variant 자리에 둔다(png_nodes 경로). main(assets/images/*.png)은
 #     만들지 않는다 — Flutter가 최저 해상도 variant를 fallback으로 쓴다.
+#   [unknown_scale_pngs] — download_figma_frame_images.sh가 "Image-fill" 로 stderr에 알린 파일명
+#     (원본 업로드 해상도라 scale=2가 아님)은 공백 구분 문자열로 여기 전달한다. 해당 PNG는
+#     2.0x가 아니라 <project_root>/assets/images/(main, 1x)에 배치된다 — 임의 배율을 2배로
+#     단정하지 않기 위함(잘못 단정하면 논리 크기가 실제의 절반으로 렌더된다).
 #   pubspec.yaml의 flutter.assets 선언·flutter_svg 의존은 grep으로 검증만 하고
 #   미비하면 WARN을 출력한다(YAML 자동 수정은 들여쓰기 파손 위험이 있어 에이전트 Edit에 맡긴다).
 
 set -euo pipefail
 
-INPUT_DIR="${1:?사용법: convert_assets.sh <input_dir> <project_root>}"
-PROJECT_ROOT="${2:?사용법: convert_assets.sh <input_dir> <project_root>}"
+INPUT_DIR="${1:?사용법: convert_assets.sh <input_dir> <project_root> [unknown_scale_pngs]}"
+PROJECT_ROOT="${2:?사용법: convert_assets.sh <input_dir> <project_root> [unknown_scale_pngs]}"
+UNKNOWN_SCALE_PNGS="${3:-}"
 
 PUBSPEC="$PROJECT_ROOT/pubspec.yaml"
 ICONS_DIR="$PROJECT_ROOT/assets/icons"
-IMAGES_2X_DIR="$PROJECT_ROOT/assets/images/2.0x"
+IMAGES_MAIN_DIR="$PROJECT_ROOT/assets/images"
+IMAGES_2X_DIR="$IMAGES_MAIN_DIR/2.0x"
 
 # ── pubspec 존재 검증 (없으면 Flutter 프로젝트 루트가 아님) ──
 if [ ! -f "$PUBSPEC" ]; then
@@ -64,22 +70,35 @@ if [ "$SVG_COUNT" -gt 0 ]; then
   echo "  SVG → $ICONS_DIR ($SVG_PLACED)"
 fi
 
-# ── PNG → assets/images/2.0x/ (ic_ → img_ 리네임) ──
+# ── PNG 배치 ──
+# 기본: assets/images/2.0x/ (ic_ → img_ 리네임, scale=2 확정)
+# unknown_scale_pngs에 이름이 있으면: assets/images/(main, 1x) — 임의 배율을 2배로 단정하지 않는다.
 PNG_PLACED=0
-placed_png_names=()
+placed_png_names=()        # 2.0x-only (scale=2 확정, 개별 논리 경로 선언 필요)
+placed_main_png_names=()   # main(1x, 배율 불명) — 디렉터리 선언으로 충분(직속 파일)
 if [ "$PNG_COUNT" -gt 0 ]; then
-  mkdir -p "$IMAGES_2X_DIR"
   for f in "${pngs[@]}"; do
     base="${f##*/}"
     case "$base" in
       ic_*) newname="img_${base#ic_}" ;;
       *)    newname="$base" ;;
     esac
-    cp "$f" "$IMAGES_2X_DIR/$newname"
-    placed_png_names+=("$newname")
+    case " $UNKNOWN_SCALE_PNGS " in
+      *" $base "*)
+        mkdir -p "$IMAGES_MAIN_DIR"
+        cp "$f" "$IMAGES_MAIN_DIR/$newname"
+        placed_main_png_names+=("$newname")
+        ;;
+      *)
+        mkdir -p "$IMAGES_2X_DIR"
+        cp "$f" "$IMAGES_2X_DIR/$newname"
+        placed_png_names+=("$newname")
+        ;;
+    esac
     PNG_PLACED=$((PNG_PLACED + 1))
   done
-  echo "  PNG → $IMAGES_2X_DIR ($PNG_PLACED, ic_→img_)"
+  [ "${#placed_png_names[@]}" -gt 0 ] && echo "  PNG(2.0x, scale=2) → $IMAGES_2X_DIR (${#placed_png_names[@]}, ic_→img_)"
+  [ "${#placed_main_png_names[@]}" -gt 0 ] && echo "  PNG(main, 배율 불명) → $IMAGES_MAIN_DIR (${#placed_main_png_names[@]}, ic_→img_)"
 fi
 
 # ── pubspec 선언·의존 검증 (수정하지 않음, WARN만) ──
@@ -90,9 +109,13 @@ MISSING_ASSETS=""
 if [ "$SVG_PLACED" -gt 0 ] && ! grep -Eq '^[[:space:]]*-[[:space:]]+assets/icons/?[[:space:]]*(#.*)?$' "$PUBSPEC"; then
   MISSING_ASSETS="$MISSING_ASSETS    - assets/icons/\n"
 fi
-# PNG는 2.0x/ variant만 있고 main 1x가 없으므로 디렉터리 선언으로는 번들되지 않는다
+# main(1x, 배율 불명) PNG는 assets/images/ 직속 파일이므로 디렉터리 선언 하나면 된다.
+if [ "${#placed_main_png_names[@]}" -gt 0 ] && ! grep -Eq '^[[:space:]]*-[[:space:]]+assets/images/?[[:space:]]*(#.*)?$' "$PUBSPEC"; then
+  MISSING_ASSETS="$MISSING_ASSETS    - assets/images/\n"
+fi
+# 2.0x-only(scale=2 확정) PNG는 variant뿐이라 디렉터리 선언으로는 번들되지 않는다
 # (flutter_tools는 디렉터리의 직속 파일만 논리 에셋으로 열거) → 각 논리 경로를 개별 선언해야 한다.
-if [ "$PNG_PLACED" -gt 0 ]; then
+if [ "${#placed_png_names[@]}" -gt 0 ]; then
   for name in "${placed_png_names[@]}"; do
     esc=$(printf '%s' "$name" | sed 's/\./\\./g')   # 정규식용 '.' 이스케이프
     pat="^[[:space:]]*-[[:space:]]+assets/images/${esc}[[:space:]]*(#.*)?$"
@@ -119,5 +142,6 @@ fi
 echo ""
 echo "=== Done ==="
 [ "$SVG_PLACED" -gt 0 ] && echo "  SVG ${SVG_PLACED}개 → assets/icons"
-[ "$PNG_PLACED" -gt 0 ] && echo "  PNG ${PNG_PLACED}개 → assets/images/2.0x"
+[ "${#placed_png_names[@]}" -gt 0 ] && echo "  PNG ${#placed_png_names[@]}개 → assets/images/2.0x"
+[ "${#placed_main_png_names[@]}" -gt 0 ] && echo "  PNG ${#placed_main_png_names[@]}개 → assets/images (main, 배율 불명)"
 exit 0

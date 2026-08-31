@@ -134,7 +134,7 @@ QA(2b)는 **경로 판정을 따른다** — 국소면 생략, 광범위면 위�
 - **Phase 2 표에 없는 파일·요소는 수정 금지** ("함께 정리" 명목도 안 됨)
 - **변경을 목표 화면에 가둔다 (scope 회피 우선)** — 다른 화면도 쓰는 값(공통 토큰·공유 컴포넌트)을 바꿔야 하면 **목표 화면 국소 해법**을 우선한다. 국소 해법이 없거나 본래 전역(디자인 시스템) 변경이면 진행하되 Phase 3.5에 영향 범위를 기록. 단 적용된 디자인을 되돌리는 식의 회피는 금지. (실측 배경: 이전에 sports 작업 중 전역 `AppTypography`를 고쳐 다른 화면까지 영향이 갔다.)
 - **색·치수는 `project-design-system`이 있으면 토큰으로** 매핑, 없으면 기존 컨벤션 유지
-- **에셋은 `figma-asset-download`에 위임한다** — 신규 정적 에셋, diff-driven에서 새로 나온 `imgXxx` 상수 모두. 동적 비주얼(Canvas·그래프)은 SVG의 실제 파라미터를 보고 적용한다
+- **에셋은 `figma-asset-download`에 위임한다** — 신규 정적 에셋, diff-driven에서 새로 나온 `imgXxx` 상수 모두. 동적 비주얼(Canvas·그래프)은 SVG의 실제 파라미터를 보고 적용한다. **Flutter 대상이면 다운로드만으로 끝나지 않는다** — Android/iOS는 리소스가 자동 발견되지만 Flutter는 `pubspec.yaml`에 등록되지 않은 `Image.asset` 참조가 **컴파일은 성공하고 런타임에만 실패**한다. 그러므로 다운로드 직후 `${CLAUDE_SKILL_DIR}/../design-to-ui/scripts/flutter/convert_assets.sh`로 배치하고(전체 7-Step 파이프라인 호출 금지 원칙과 무관 — 이건 독립 스크립트 실행), pubspec 미선언 WARN이 뜨면 해당 항목을 Edit로 추가한다. `flutter_svg` 미의존 WARN도 동일하게 처리한다
 
 ---
 

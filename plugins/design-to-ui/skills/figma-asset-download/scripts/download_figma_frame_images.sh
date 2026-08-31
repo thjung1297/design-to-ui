@@ -280,5 +280,12 @@ if fill_nodes:
         downloaded.append(fpath)
         print(fpath)
 
+if fill_nodes:
+    # image-fill 다운로드는 원본 업로드 해상도(임의 배율)라 png_nodes(scale=2 고정)와 다르다.
+    # 플랫폼 변환 스크립트(예: Flutter convert_assets.sh)가 2x 단정을 피할 수 있도록 파일명을 별도로 알린다.
+    fill_fnames = [fname for _, fname, _ in fill_nodes if os.path.join(out_dir, fname) in downloaded]
+    if fill_fnames:
+        print('Image-fill (원본 업로드 해상도, scale=2 아님): ' + ' '.join(fill_fnames), file=sys.stderr)
+
 print(f'Done. {len(downloaded)} files saved under {out_dir}', file=sys.stderr)
 "

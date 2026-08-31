@@ -234,7 +234,9 @@ bash "${CLAUDE_SKILL_DIR}/scripts/android/convert_assets.sh" /tmp/figma_type_a a
 bash "${CLAUDE_SKILL_DIR}/scripts/ios/convert_assets.sh" /tmp/figma_type_a <App>/Assets.xcassets
 
 # Flutter: SVG → assets/icons/, PNG(@2x) → assets/images/2.0x/ (img_* 리네임)
-bash "${CLAUDE_SKILL_DIR}/scripts/flutter/convert_assets.sh" /tmp/figma_type_a <project_root>
+# 다운로드 로그에 "Image-fill (원본 업로드 해상도, scale=2 아님): <파일명…>"이 있으면
+# 그 파일명들을 3번째 인자로 공백 구분 전달 — 해당 PNG만 main(1x)에 배치되어 2x로 오인되지 않는다.
+bash "${CLAUDE_SKILL_DIR}/scripts/flutter/convert_assets.sh" /tmp/figma_type_a <project_root> "ic_fill_example.png"
 ```
 
 유형 A 리소스가 모두 배치되고, 유형 B 파라미터를 확인한 뒤 Step 6으로 진행합니다.

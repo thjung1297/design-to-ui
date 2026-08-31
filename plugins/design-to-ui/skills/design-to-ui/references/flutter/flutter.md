@@ -5,14 +5,17 @@
 MCP 출력(React+Tailwind)을 Flutter 위젯으로 변환하면서 프로젝트 디자인 시스템을 적용합니다.
 
 **에셋 참조:** Step 4~5 산출물 기반으로 에셋을 참조한다.
-- **유형 A:** SVG → `SvgPicture.asset('assets/icons/ic_xxx.svg')`(`flutter_svg` 의존 필요 — pubspec `dependencies`에 없으면 추가), PNG → `Image.asset('assets/images/img_xxx.png')`. PNG 경로는 **main asset 경로**(`2.0x/` 미포함)로 참조하되, 실제 파일이 `assets/images/2.0x/`에만 있으면 그 **논리 경로를 pubspec에 개별 선언**해야 `AssetImage`가 variant를 해소한다(아래 pubspec 절; width/height 미지정 시 main 기준 논리 크기로 렌더). ⚠️ 다운로드 스크립트의 `png_nodes`는 `scale=2`이지만 **image-fill(IMAGE fill) 노드**는 `/v1/files/.../images`로 받은 **원본 업로드 해상도라 배율이 임의**다 — 배율이 불확실한 PNG(사진·배경 등)는 `2.0x`로 단정하지 말고 main(`assets/images/img_xxx.png`, 1x)으로 두거나 Figma에서 알려진 배율로 재추출한다. 더 높은 배율이 필요하면 Figma REST `scale=3`으로 재추출해 `3.0x/`에 둔다.
+- **유형 A:** SVG → `SvgPicture.asset('assets/icons/ic_xxx.svg')`(`flutter_svg` 의존 필요 — pubspec `dependencies`에 없으면 추가), PNG → `Image.asset('assets/images/img_xxx.png')`. PNG 경로는 **main asset 경로**(`2.0x/` 미포함)로 참조한다(width/height 미지정 시 main 기준 논리 크기로 렌더). ⚠️ 다운로드 스크립트의 `png_nodes`는 `scale=2`이지만 **image-fill(IMAGE fill) 노드**는 `/v1/files/.../images`로 받은 **원본 업로드 해상도라 배율이 임의**다 — `download_figma_frame_images.sh`가 그런 파일명을 stderr에 `Image-fill (원본 업로드 해상도, scale=2 아님): …`로 알리면, 그 파일명들을 `scripts/flutter/convert_assets.sh`의 **3번째 인자**(공백 구분)로 넘긴다. 그러면 `2.0x`로 단정되지 않고 main(1x)에 배치된다(아래 pubspec 절 — main 배치는 디렉터리 선언만으로 충분). 더 높은 배율이 필요하면 Figma REST `scale=3`으로 재추출해 `3.0x/`에 둔다.
 - **유형 B:** Step 5에서 `Read`로 확인한 SVG 파라미터를 `CustomPaint`/`CustomPainter`에 그대로 반영한다(arc는 `canvas.drawArc`의 시작·스윕 각도, `strokeWidth`, 색상, opacity). 추측 금지. **CustomPainter 작성 완료 후 `/tmp/figma_type_b` 디렉터리를 삭제한다.**
 - **유형 C:** 기존 asset 재사용 + design_context에서 확인한 Figma 지정 색을 `SvgPicture.asset(colorFilter: ColorFilter.mode(색, BlendMode.srcIn))` / `Image.asset(color:)`로 적용한다.
 - **URL 이미지:** `Image.network` 또는 프로젝트가 쓰는 캐싱 위젯(`CachedNetworkImage` 등).
 
 **pubspec 등록 필수:** `convert_assets.sh`는 에셋을 복사·배치만 하고 pubspec은 수정하지 않는다(YAML 자동 수정은 들여쓰기 파손 위험). 스크립트가 미선언 WARN을 찍으면 `flutter:`→`assets:` 아래에 Edit로 추가한다:
 - **SVG**(`assets/icons/`): 파일이 디렉터리 직속이므로 **디렉터리 항목** `- assets/icons/` 하나면 된다.
-- **PNG**(`assets/images/2.0x/`만 있고 main 1x 없음): **디렉터리 선언(`- assets/images/`)으로는 번들되지 않는다** — flutter_tools(3.47.0 `_parseAssetsFromFolder`)는 디렉터리의 **직속 파일만** 논리 에셋으로 열거하고 `2.0x/`에만 있는 파일은 등록하지 않는다. 따라서 **각 논리 경로를 개별 선언**한다: `- assets/images/img_xxx.png` (실제 1x 파일이 없어도 variant가 있으면 등록·번들된다). 스크립트 WARN이 추가할 정확한 경로 목록을 출력한다.
+- **PNG(2.0x, scale=2 확정 — `convert_assets.sh` 기본값)**: `assets/images/2.0x/`만 있고 main 1x가 없으므로 **디렉터리 선언(`- assets/images/`)으로는 번들되지 않는다** — flutter_tools(3.47.0 `_parseAssetsFromFolder`)는 디렉터리의 **직속 파일만** 논리 에셋으로 열거하고 `2.0x/`에만 있는 파일은 등록하지 않는다. 따라서 **각 논리 경로를 개별 선언**한다: `- assets/images/img_xxx.png` (실제 1x 파일이 없어도 variant가 있으면 등록·번들된다).
+- **PNG(main, 배율 불명 — `convert_assets.sh` 3번째 인자로 지정한 image-fill 파일)**: `assets/images/`에 직속 파일로 배치되므로 **디렉터리 항목** `- assets/images/` 하나면 된다.
+
+스크립트 WARN이 위 두 카테고리를 구분해 정확한 경로를 출력한다.
 
 `flutter_svg`를 처음 쓰면 `dependencies`에도 추가한다.
 
