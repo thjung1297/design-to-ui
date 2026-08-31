@@ -86,14 +86,17 @@ fi
 WARN_LINES=""
 MISSING_ASSETS=""
 # SVG는 assets/icons/ 직속 파일이므로 디렉터리 선언 하나로 충분하다.
-if [ "$SVG_PLACED" -gt 0 ] && ! grep -q 'assets/icons/' "$PUBSPEC"; then
+# 주석·긴 문자열 안의 우연한 일치가 아니라 실제 flutter.assets 리스트 항목만 인정한다.
+if [ "$SVG_PLACED" -gt 0 ] && ! grep -Eq '^[[:space:]]*-[[:space:]]+assets/icons/?[[:space:]]*(#.*)?$' "$PUBSPEC"; then
   MISSING_ASSETS="$MISSING_ASSETS    - assets/icons/\n"
 fi
 # PNG는 2.0x/ variant만 있고 main 1x가 없으므로 디렉터리 선언으로는 번들되지 않는다
 # (flutter_tools는 디렉터리의 직속 파일만 논리 에셋으로 열거) → 각 논리 경로를 개별 선언해야 한다.
 if [ "$PNG_PLACED" -gt 0 ]; then
   for name in "${placed_png_names[@]}"; do
-    if ! grep -q "assets/images/$name" "$PUBSPEC"; then
+    esc=$(printf '%s' "$name" | sed 's/\./\\./g')   # 정규식용 '.' 이스케이프
+    pat="^[[:space:]]*-[[:space:]]+assets/images/${esc}[[:space:]]*(#.*)?$"
+    if ! grep -Eq "$pat" "$PUBSPEC"; then
       MISSING_ASSETS="$MISSING_ASSETS    - assets/images/$name\n"
     fi
   done
@@ -102,7 +105,8 @@ if [ -n "$MISSING_ASSETS" ]; then
   WARN_LINES="${WARN_LINES}WARN: pubspec.yaml flutter.assets(flutter:→assets:)에 다음 항목을 추가하세요:\n${MISSING_ASSETS}"
 fi
 
-if [ "$SVG_PLACED" -gt 0 ] && ! grep -q 'flutter_svg' "$PUBSPEC"; then
+# flutter_svg는 주석(# flutter_svg …)이 아니라 dependencies의 실제 키로 선언돼야 인정한다.
+if [ "$SVG_PLACED" -gt 0 ] && ! grep -Eq '^[[:space:]]*flutter_svg[[:space:]]*:' "$PUBSPEC"; then
   WARN_LINES="${WARN_LINES}WARN: SVG를 배치했지만 pubspec.yaml에 flutter_svg 의존이 없습니다. dependencies에 flutter_svg를 추가하세요.\n"
 fi
 

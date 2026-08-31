@@ -187,7 +187,7 @@ design_context의 모든 시각 요소를 확인하여 세 유형으로 분류�
 
 **플랫폼 에셋 사양 (Step 4·5 공용):**
 
-> **에셋 최종 형식은 `project-design-system`을 우선 따른다 (Android·iOS 공통).** PDS(`.claude/skills/project-design-system`)에 에셋 형식 규칙(예: iOS `PNG @1x/2x/3x`)이 명시돼 있으면 그대로 따르고, 없으면 아래 표의 기본 변환 스크립트를 쓴다. 기본과 다른 배율·형식이 필요하면 로컬 업스케일 대신 Figma에서 해당 배율로 재추출한다(REST `format=png&scale=1|2|3`).
+> **에셋 최종 형식은 `project-design-system`을 우선 따른다 (Android·iOS·Flutter 공통).** PDS(`.claude/skills/project-design-system`)에 에셋 형식 규칙(예: iOS `PNG @1x/2x/3x`, Flutter `assets/` 경로·배율·flutter_svg 사용 여부)이 명시돼 있으면 그대로 따르고, 없으면 아래 표의 기본 변환 스크립트를 쓴다. 기본과 다른 배율·형식이 필요하면 로컬 업스케일 대신 Figma에서 해당 배율로 재추출한다(REST `format=png&scale=1|2|3`).
 
 | 항목 | Android | iOS | Flutter |
 |------|---------|-----|---------|

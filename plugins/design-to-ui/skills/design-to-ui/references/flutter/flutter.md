@@ -48,7 +48,7 @@ design_context의 메인 export 함수를 보고, 호출되는 모든 자식 컴
 
 ## 레이아웃 overflow
 
-React/CSS에서는 overflow가 암묵적으로 처리되지만, Flutter는 다르다. 자식 높이 합계가 고정 높이를 넘기면 `SingleChildScrollView`(짧은 목록)/`ListView`(긴·가상화 목록)로 감싼다.
+**소스가 실제로 스크롤 가능한 컨테이너/리스트일 때만** `SingleChildScrollView`(짧은 목록)/`ListView`(긴·가상화 목록)로 감싼다. React/CSS에서는 overflow가 암묵적으로 처리되지만, Flutter는 명시 선언이 필요하다. **소스가 의도적으로 클리핑하는 경우**(`overflow-hidden` 캐러셀, 마스크 처리된 일러스트, 데코레이션 스택 등 스크롤 인터랙션이 없는 요소)는 스크롤로 바꾸지 않는다 — 위 매핑표의 `ClipRect`/`ClipRRect`로 그대로 클리핑을 유지한다. 자식 높이 합계가 고정 높이를 넘긴다는 사실만으로 스크롤 여부를 추론하지 말 것 — 실제 스크롤 동작(스와이프 가능한 캐러셀, 무한 리스트 등)이 design_context·스크린샷에서 확인될 때만 스크롤 위젯을 쓴다.
 
 **스크롤 축 bounded 제약 필수:** 스크롤 방향에 **유한한 크기 제약**이 없으면 Flutter는 스크롤이 아니라 **overflow 에러(`RenderFlex overflowed`)** 또는 unbounded-height assertion을 낸다.
 - 세로 스크롤 → 높이 제약: `Expanded`(Column/Flex 자식), `SizedBox(height: N)`, 유한 높이 부모.

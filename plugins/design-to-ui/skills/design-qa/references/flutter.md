@@ -12,7 +12,7 @@ Flutter 앱은 Android 기기/에뮬레이터 또는 iOS 시뮬레이터 위에�
 ## 테마 전환
 
 - 시스템 다크모드를 따르는 앱(`ThemeMode.system`)은 호스트 설정 전환(Android `cmd uimode night yes|no`, iOS 시뮬레이터 Appearance)만으로 충분하다.
-- `ThemeMode.light`/`dark`를 코드에 **하드코딩**한 앱은 호스트 설정을 바꿔도 안 바뀐다 — 코드에서 반대 테마로 전환한 뒤 재빌드해 캡처한다.
+- `ThemeMode.light`/`dark`를 코드에 **하드코딩**한 앱은 호스트 설정을 바꿔도 안 바뀐다 — 코드에서 반대 테마로 전환한 뒤 재빌드해 캡처한다. **이 변경은 검증 전용 임시 수정이다** — 캡처 완료 후 원래 `ThemeMode`로 되돌리고 재빌드한다(Android `viewport.py reset`과 같은 원칙: 루프가 실패로 끝나도 원복은 수행). 되돌릴 수 없는 상황이면(예: 빌드 실패로 중단) 그 테마는 검증 불가로 보고하고 앱을 강제 전환된 상태로 남겨두지 않는다.
 
 ## 보정 어휘 (오차 카테고리 → Flutter 선언값)
 
