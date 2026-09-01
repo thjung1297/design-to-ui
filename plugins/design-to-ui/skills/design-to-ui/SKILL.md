@@ -92,6 +92,11 @@ Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 
 | **iOS** | `*.xcodeproj`/`*.xcworkspace`, `Package.swift`, `*.swift` | SwiftUI(`View`/`some View`/`@main App`) → `references/ios/swiftui.md` · UIKit(`UIViewController`/storyboard) → `references/ios/uikit.md` |
 | **Flutter** | 위 탐색으로 찾은 Flutter 루트의 `pubspec.yaml`, `lib/**/*.dart`, `pubspec.yaml` 내 `dependencies.flutter.sdk` | 단일(프레임워크 분기 없음) → `references/flutter/flutter.md` |
 
+**대상 화면이 이미 구현돼 있는가 (필수 확인 — 신호 표 판정 뒤, Step 1 전에):** design-to-ui는 **신규 화면 스캐폴딩용**이다. Figma 프레임 이름·주요 텍스트로 코드베이스를 검색해(라우트 정의, 화면 목록, 파일명) 같은 화면이 이미 구현돼 있는지 확인한다. 이미 있으면:
+- **design-to-ui(이 스킬)를 그대로 돌리지 않는다.** 실제 provider·라우팅·데이터 페칭에 연결된 기존 화면을 전체 재작성하면 기존 기능을 회귀시킬 위험이 있다(실측: "채용 캘린더" Figma 프레임이 이미 `RecruitmentCalendar` 위젯 + 실제 provider로 구현돼 있었음).
+- **`figma-diff-apply` 스킬로 전환할지 사용자에게 확인한다** — 그 스킬이 정확히 "변경된 컴포넌트만 최소 반영" 용도다.
+- 사용자가 그래도 design-to-ui 전체 스캐폴딩을 명시적으로 요구하면, **기존 컴포넌트·비즈니스 로직(provider 연동, 네비게이션, 데이터 파싱)은 재사용하고 구조/스타일 델타만 Figma 기준으로 갱신**한다(Step 6 "기존 컴포넌트 재사용" 원칙의 연장 — 전체 재작성이 아니라).
+
 ---
 
 ### Step 1: Node ID 추출
@@ -102,7 +107,7 @@ Figma URL에서 file key와 node ID를 추출합니다.
 
 **추출:**
 - **File key:** `:fileKey` — `/design/` 뒤의 세그먼트
-- **Node ID:** `1-2` — `node-id` 쿼리 파라미터 값
+- **Node ID:** `1-2` — `node-id` 쿼리 파라미터 값. **`focus-id` 파라미터가 함께 있으면 그것이 실제 변환 대상인 경우가 많다** — Figma 데스크톱의 "dev mode" 링크(`?...&m=dev&focus-id=...`)는 `node-id`가 상위 페이지(canvas) 노드, `focus-id`가 그 안에서 실제로 포커스된 프레임인 패턴이 흔하다(실측: `node-id`가 canvas, `focus-id`가 375×886 화면 프레임). 두 값이 다르면 **`focus-id`를 1순위 후보로 시도**한다.
 
 **예시:**
 - URL: `https://figma.com/design/<FILE_KEY>/<FILE_NAME>?node-id=1234-5678`
@@ -110,6 +115,8 @@ Figma URL에서 file key와 node ID를 추출합니다.
 - Node ID: `1234-5678`
 
 > **표기 주의:** MCP 도구(`get_design_context` 등)는 **하이픈** 형식(`1234-5678`)을, 에셋 다운로드 스크립트는 **콜론** 형식(`1234:5678`)을 받는다. Step 5 다운로드 시 하이픈을 콜론으로 바꿔 전달한다.
+
+> ⚠️ **`get_design_context`는 페이지(canvas) 노드에서 호출 자체가 실패한다** — `node-id`가 canvas를 가리키면 (`focus-id`가 없거나 같은 경우 포함) Step 2로 바로 넘어가지 말고 먼저 `get_metadata(nodeId=<node-id>)`로 자식 프레임 목록을 확인해 실제 대상 프레임의 node ID를 찾는다(URL의 `focus-id`와 일치하는지도 대조). section 노드는 sparse metadata만 돌아온다.
 
 ---
 
