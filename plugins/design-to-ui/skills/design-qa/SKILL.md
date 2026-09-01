@@ -1,11 +1,11 @@
 ---
 name: design-qa
-description: 빌드된 앱 화면을 실기기/시뮬레이터에서 캡처해 Figma 원본과 오버레이(50% 블렌드 + diff 히트맵 + figma|real 나란히 크롭 + 픽셀색 비교)로 대조하고, 코드 오차로 확정된 항목을 Figma 선언값으로 되짚어 스스로 보정하는 검증 루프. 비교·측정 엔진은 플랫폼 중립이고 캡처 계층만 플랫폼별이다(Android·iOS·Web 지원). 두 진입: ① codegen Step 7c 위임 호출, ② 직접 호출(/design-qa) — 프롬프트로 검증/보정 모드를 판별하고 Figma 링크 해소·현재 브랜치 빌드·캡처까지 스스로 오케스트레이션. "오버레이 검증", "실기기 대조", "figma랑 겹쳐봐", "design-qa", "어디가 틀렸는지 보정", "Step 7c" 같은 요청에 사용.
+description: 빌드된 앱 화면을 실기기/시뮬레이터에서 캡처해 Figma 원본과 오버레이(50% 블렌드 + diff 히트맵 + figma|real 나란히 크롭 + 픽셀색 비교)로 대조하고, 코드 오차로 확정된 항목을 Figma 선언값으로 되짚어 스스로 보정하는 검증 루프. 비교·측정 엔진은 플랫폼 중립이고 캡처 계층만 플랫폼별이다(Android·iOS·Web·Flutter 지원). 두 진입: ① codegen Step 7c 위임 호출, ② 직접 호출(/design-qa) — 프롬프트로 검증/보정 모드를 판별하고 Figma 링크 해소·현재 브랜치 빌드·캡처까지 스스로 오케스트레이션. "오버레이 검증", "실기기 대조", "figma랑 겹쳐봐", "design-qa", "어디가 틀렸는지 보정", "Step 7c" 같은 요청에 사용.
 license: Apache-2.0
 metadata:
   author: NAVER
-  version: "3.4"
-  platform: [android, ios, web]
+  version: "3.5"
+  platform: [android, ios, web, flutter]
 ---
 
 # design-qa — 오버레이 검증 루프
@@ -62,6 +62,7 @@ Finder에서 바로 열리는 자리에 있어야 한다 — `/tmp`는 사용자
 - **Android** → `references/android.md` (adb 캡처·dumpsys frame crop·Compose 보정 어휘)
 - **iOS** → `references/ios.md` (simctl 캡처·시뮬레이터 bounds crop·SwiftUI/UIKit 보정 어휘)
 - **Web** → `references/web.md` (Playwright Storybook 요소 캡처·`fonts.ready`·trim·CSS/React 보정 어휘·`run.mjs` node-map 오케스트레이션)
+- **Flutter** → `references/flutter.md` (캡처·뷰포트는 호스트 OS reference 위임 + Flutter 보정 어휘)
 
 **exact-crop 원칙 (중립 — 이 루프의 핵심).** 풀스크린을 좌표 추측으로 자르면 ~15px 오프셋 artifact로 "틀어짐"
 오판이 난다. 반드시 **대상 창의 실제 경계로 정확히 crop**한다. 창이 신뢰할 스크린 좌표를 안 주는 환경

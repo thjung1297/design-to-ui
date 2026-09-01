@@ -31,7 +31,7 @@ argument-hint: <dev_pr_link>
 - 현재 디렉터리의 `origin`이 PR의 `{owner}/{repo}`와 같으면 그대로 쓴다. 다르면 `~/{repo}`, `~/git/{repo}`, `~/AndroidStudioProjects/{repo}` 에서 **같은 origin인 클론을 먼저 찾고**(중복 클론 방지), 없으면 `~/{repo}` 에 클론한다 — 시간이 걸리니 경로를 먼저 한 줄 알린다. 클론 실패(GitHub 인증 등)면 중단하고 안내한다.
 - 확보한 경로를 `PROJECT_DIR`로 두고, **이후 모든 git·빌드 명령은 이 경로 기준**(`cd {PROJECT_DIR} && …` 또는 `git -C {PROJECT_DIR} …`)으로 실행한다. 세션의 시작 폴더가 프로젝트가 아니어도 **디자이너에게 세션 재시작·재실행을 요구하지 않는다** — 경로를 알고 있으면 그대로 진행할 수 있다. 파일 읽기·수정에 접근 권한이 필요하면 `/add-dir {PROJECT_DIR}` 로 확보한다.
 - 다음 커맨드가 세션이 바뀌어도 이 프로젝트를 찾을 수 있게 경로를 남긴다: `PROJECT_DIR` 을 `~/.design-to-ui/current-project` 에 기록(디렉터리 없으면 생성, 한 줄 덮어쓰기).
-- 프로젝트를 개발툴로도 열어준다 — 디자이너가 코드·프리뷰·Terminal 패널을 쓰고, 2c에서 커밋 이력 패널도 여기에 띄운다. gradle 파일이 있으면 `open -a "Android Studio" {PROJECT_DIR}`, `*.xcworkspace`(우선)/`*.xcodeproj` 가 있으면 `open {해당 경로}`. 둘 다 아니거나 디자이너가 다른 툴을 쓰고 있으면 `open -a "{앱 이름}" {PROJECT_DIR}` 로 그 툴에 연다. **무엇으로 열었는지(앱 이름)를 기억해 둔다** — 2c가 그 툴 기준으로 동작한다. **개발툴 실행 실패는 중단 사유가 아니다** — 빌드는 3단계에서 CLI로 하므로, 경로만 알리고 계속 진행한다.
+- 프로젝트를 개발툴로도 열어준다 — 디자이너가 코드·프리뷰·Terminal 패널을 쓰고, 2c에서 커밋 이력 패널도 여기에 띄운다. **Flutter 판별은 `PROJECT_DIR` 루트로 한정하지 않는다** — 모노레포(예: `apps/mobile/`에 Flutter 앱)에서는 루트에 `pubspec.yaml`이 없거나 있어도 Flutter SDK 의존이 없을 수 있다. 변환 대상 화면이 속한 파일에서 위로 탐색하며 **Flutter SDK 의존**(`dependencies:`→`flutter:`→`sdk: flutter`)이 있고 `lib/` Dart 코드가 있는 가장 가까운 `pubspec.yaml` 디렉터리를 찾고, 대상 화면이 아직 없으면 저장소 전체에서 그런 디렉터리를 찾는다(`find {PROJECT_DIR} -name pubspec.yaml -not -path '*/build/*'` 후 각각 확인). 찾으면 그 디렉터리를 `FLUTTER_APP_DIR`로 두고 **개발툴 열기·3c 빌드 명령은 `FLUTTER_APP_DIR` 기준**으로 실행한다(`open -a "Android Studio" {FLUTTER_APP_DIR}`) — git·브랜치 관련 명령은 계속 `PROJECT_DIR`(레포 루트) 기준. **`FLUTTER_APP_DIR`를 `~/.design-to-ui/current-flutter-app-dir`에 기록한다**(`/figma-apply`가 세션이 바뀌어도 같은 경로에서 빌드하도록 — `current-project`와 같은 방식, 디렉터리 없으면 생성). 못 찾으면 순수 Dart 패키지이므로 이 우선을 적용하지 않고 아래 네이티브 신호로 판정하며, 이전 세션의 stale 값이 남지 않도록 그 파일이 있으면 삭제한다. gradle 파일이 있으면 `open -a "Android Studio" {PROJECT_DIR}`, `*.xcworkspace`(우선)/`*.xcodeproj` 가 있으면 `open {해당 경로}`. 둘 다 아니거나 디자이너가 다른 툴을 쓰고 있으면 `open -a "{앱 이름}" {PROJECT_DIR}` 로 그 툴에 연다. **무엇으로 열었는지(앱 이름)를 기억해 둔다** — 2c가 그 툴 기준으로 동작한다. **개발툴 실행 실패는 중단 사유가 아니다** — 빌드는 3단계에서 CLI로 하므로, 경로만 알리고 계속 진행한다.
 
 ### 2. 브랜치 준비
 
@@ -148,7 +148,7 @@ git -C {PROJECT_DIR} log {확정된 브랜치} $RANGE --format='%ad │ %s' --da
   안내한다 — IDE 설치는 디자이너 계정·동의가 필요한 작업이다.
 
 **3c. 빌드·설치·실행.** 프로젝트의 표준 명령을 쓴다 (Android: `./gradlew :{module}:installDebug` → `adb shell am
-start`, iOS: `xcodebuild` → `simctl launch`). 모듈·variant·스킴이 불확실할 때만 디자이너에게 묻는다.
+start`, iOS: `xcodebuild` → `simctl launch`, **Flutter: `flutter run -d <device> --no-resident`**(`FLUTTER_APP_DIR` 기준으로 실행 — 모노레포면 `PROJECT_DIR`와 다를 수 있다)). `--no-resident`를 반드시 붙인다 — `flutter run`은 기본값(`--resident`, `flutter run --help -v`의 `--[no-]resident` 항목 기준 defaults to on)이 hot-reload 입력을 기다리며 상주해 4단계 완료 메시지에 도달하지 못하게 막는다. 모듈·variant·스킴이 불확실할 때만 디자이너에게 묻는다.
 
 빌드가 실패하면 **브랜치는 그대로 두고** 실패 요지와 다음 액션만 알린다 — 2단계는 이미 끝났으니 되돌리지 않는다.
 

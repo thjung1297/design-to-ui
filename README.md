@@ -1,6 +1,6 @@
 # Design-To-UI
 
-Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit)로 변환하는 Claude Code 플러그인입니다.
+Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI/UIKit, Flutter Widgets)로 변환하는 Claude Code 플러그인입니다.
 
 ## 빠른 설치 (복붙)
 (개발용)
@@ -33,11 +33,11 @@ generate-project-design-system 스킬로 이 프로젝트에 맞는 초안을 �
 
 | 스킬 | 역할 | 위치 |
 |------|------|------|
-| **design-to-ui** | 메인 워크플로우 — 7-Step 파이프라인. Step 1·2·3·7 공통 spine + Step 4·5·6 플랫폼 분기(Android/iOS) + 검증 | 플러그인 |
+| **design-to-ui** | 메인 워크플로우 — 7-Step 파이프라인. Step 1·2·3·7 공통 spine + Step 4·5·6 플랫폼 분기(Android/iOS/Flutter) + 검증 | 플러그인 |
 | **generate-project-design-system** | 프로젝트 코드를 분석하여 `project-design-system` 스킬의 초안을 자동 생성 | 플러그인 |
 | **project-design-system** | 프로젝트 디자인 시스템 토큰 매핑 (색상, 타이포, 배경, 공통 컴포넌트) — **프로젝트별 커스터마이징 필요** | **프로젝트** `.claude/skills/` |
 | **figma-asset-download** | Figma REST API로 SVG/PNG 다운로드 (범용, 플랫폼 무관) | 플러그인 |
-| **design-qa** | 빌드된 앱 화면을 Figma와 오버레이(diff 히트맵·픽셀 비교)로 대조하고 코드 오차를 자동 보정하는 검증 루프 (Android/iOS) | 플러그인 |
+| **design-qa** | 빌드된 앱 화면을 Figma와 오버레이(diff 히트맵·픽셀 비교)로 대조하고 코드 오차를 자동 보정하는 검증 루프 (Android/iOS/Flutter) | 플러그인 |
 | **figma-diff-apply** | Figma 변경분만 `design/*` 브랜치 코드에 최소 반영 (iteration N→N+1용) | 플러그인 |
 | **discussion** | 사용 중 겪은 gotcha(추가 프롬프트로 해결한 경험)·아이디어·도입 사례를 GitHub Discussions에 등록. 세션 자동 요약 + 카테고리 폼(`.github/DISCUSSION_TEMPLATE`) 준수, 등록 전 사용자 확인 | 플러그인 |
 
@@ -142,7 +142,7 @@ https://figma.com/design/xxx/Design?node-id=123-456
 이 피그마 레이어를 Compose UI 코드로 변환해줘.
 ```
 
-AI가 프로젝트를 분석하여 플랫폼(Android/iOS)과 프레임워크(Compose/XML/SwiftUI/UIKit)를 자동 판단하고, 해당 `references/<platform>/` 문서를 로드합니다.
+AI가 프로젝트를 분석하여 플랫폼(Android/iOS/Flutter)과 프레임워크(Compose/XML/SwiftUI/UIKit/Flutter Widgets)를 자동 판단하고, 해당 `references/<platform>/` 문서를 로드합니다.
 
 ## 커스터마이징
 
@@ -185,15 +185,19 @@ Design-To-UI/
 │           │   │   ├── android/
 │           │   │   │   ├── compose.md        # Step 6 Compose 변환
 │           │   │   │   └── xml.md            # Step 6 XML Layout 변환
-│           │   │   └── ios/
-│           │   │       ├── swiftui.md        # Step 6 SwiftUI 변환
-│           │   │       └── uikit.md          # Step 6 UIKit 변환
+│           │   │   ├── ios/
+│           │   │   │   ├── swiftui.md        # Step 6 SwiftUI 변환
+│           │   │   │   └── uikit.md          # Step 6 UIKit 변환
+│           │   │   └── flutter/
+│           │   │       └── flutter.md        # Step 6 Flutter 변환
 │           │   └── scripts/
 │           │       ├── android/
 │           │       │   ├── convert_assets.sh # SVG→VD, PNG→WebP 변환
 │           │       │   └── preprocess_svg.py # SVG 전처리
-│           │       └── ios/
-│           │           └── convert_assets.sh # SVG→PDF, Asset Catalog 생성
+│           │       ├── ios/
+│           │       │   └── convert_assets.sh # SVG→PDF, Asset Catalog 생성
+│           │       └── flutter/
+│           │           └── convert_assets.sh # SVG·PNG → assets/ 복사·배치
 │           ├── generate-project-design-system/
 │           │   └── SKILL.md              # 프로젝트 분석 → project-design-system 초안 자동 생성
 │           ├── figma-diff-apply/
@@ -204,7 +208,7 @@ Design-To-UI/
 │           │       └── download_figma_frame_images.sh
 │           ├── design-qa/
 │           │   ├── SKILL.md              # 실기기/시뮬 캡처 → Figma 오버레이 대조·자동 보정 검증 루프
-│           │   ├── references/           # 플랫폼별 캡처·보정 어휘 (android.md · ios.md)
+│           │   ├── references/           # 플랫폼별 캡처·보정 어휘 (android.md · ios.md · web.md · flutter.md)
 │           │   └── scripts/              # overlay · *_probe · ledger_gate 등
 │           └── discussion/
 │               └── SKILL.md              # 사용 경험(gotcha·아이디어·도입)을 Discussions에 폼 준수 등록
