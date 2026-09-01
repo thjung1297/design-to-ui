@@ -5,7 +5,7 @@ license: Apache-2.0
 user-invocable: false
 metadata:
   author: NAVER
-  version: "2.0"
+  version: "2.1"
   requires: [figma-asset-download]
   optional: [project-design-system]
   platform: [android, flutter]
@@ -52,7 +52,7 @@ Figma URL의 현재 디자인과 design/* 브랜치의 현 코드를 대조하�
 Figma에 없는 동작을 넣을 때 가장 깨지기 쉬운 것은 **정지 상태**다. 애니메이션을 얹었더니 시작·끝 프레임이 기존 에셋과 미세하게 달라져 design-qa 오버레이가 전부 어긋나는 식이다. 그래서 유형 B는 구현 후 다음을 **픽셀로** 확인한다:
 
 1. 변경 전 커밋과 변경 후를 각각 같은 정지 상태로 띄운다 (이 프로젝트는 `-e state selected` 처럼 상태를 인자로 받는다).
-2. 두 캡처를 diff 해서 **차이가 0인지** 확인한다.
+2. 두 캡처를 diff 해서 **차이가 0인지** 확인한다. **Android는 풀스크린 캡처에 OS 내비게이션 바(3버튼 모드의 아이콘 행)가 그대로 포함된다** — 콘텐츠와 무관하게 항상 같은 자리에 있는 그 영역을 diff에 넣으면, 실제로는 카드가 달라졌는데도 내비바가 "차이 0"을 만들어 false pass를 낸다(design-qa `references/android.md` 참고). diff 전에 내비바 높이만큼 미리 크롭하거나, 카드의 실제 콘텐츠 경계(예: 알려진 배경색으로 전환되는 지점)로 crop한 뒤 비교한다.
 
 기존 에셋을 재사용해 점진 노출·클립하는 식으로 구현하면 이 검증이 통과한다. 반대로 글리프·도형을 새로 그려 흉내내면 거의 통과하지 못한다.
 
