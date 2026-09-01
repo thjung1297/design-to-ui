@@ -84,13 +84,13 @@ Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 
 2. **변환 대상 화면 파일 기준 자동 판별:** 힌트가 없으면 프로젝트 코드를 검색한다(아래 신호 표). **판별 단위는 모듈 전역이 아니라 "변환 결과를 넣을 대상 화면/파일"이다.** 대상 화면이 단일 프레임워크면 — 프로젝트 전체가 Compose+XML 또는 SwiftUI+UIKit으로 혼재하더라도 — 대상 화면의 프레임워크로 확정한다. (전역 grep으로 먼저 잡힌 프레임워크로 임의 확정하지 않는다.)
 3. **모호 시 질문 (임의 선택 금지):** 대상 화면이 불명확하거나(어디에 넣을지 미지정) 단일 프레임워크로 좁혀지지 않으면 — **사용자에게 어느 플랫폼·프레임워크로 변환할지 묻는다.**
 
-**판별 우선순위 (Flutter 오판 방지):** Flutter 프로젝트는 `android/`·`ios/` 하위에 Gradle·xcodeproj를 포함하므로, **루트 `pubspec.yaml`에 Flutter SDK 의존(`dependencies:`→`flutter:`→`sdk: flutter`)이 선언돼 있고 `lib/` Dart 코드가 있으면 Android/iOS 신호보다 Flutter로 우선 확정**한다. `pubspec.yaml`+`lib/`만 있고 **Flutter SDK 의존이 없으면 순수 Dart 패키지**이므로 Flutter로 확정하지 말고 모호로 처리한다(Step 0 규칙 3). 변환 대상 파일이 `android/`·`ios/` 하위 네이티브 코드로 명시된 경우에만 해당 네이티브 플랫폼으로 본다.
+**판별 우선순위 (Flutter 오판 방지):** Flutter 프로젝트는 `android/`·`ios/` 하위에 Gradle·xcodeproj를 포함하므로, 이 신호만으로 Android/iOS로 오판하지 않는다. **루트에 국한하지 않고**, 대상 화면이 속한 파일에서 위로 탐색하며(대상이 아직 불명확하면 저장소 전체에서) **Flutter SDK 의존**(`dependencies:`→`flutter:`→`sdk: flutter`)이 선언되고 `lib/` Dart 코드가 있는 가장 가까운 `pubspec.yaml` 디렉터리를 찾는다 — 모노레포(예: `apps/mobile/`에 Flutter 앱)는 저장소 루트에 그런 `pubspec.yaml`이 없을 수 있다. 찾으면 그 디렉터리를 Flutter 루트로 Android/iOS 신호보다 우선 확정한다. `pubspec.yaml`+`lib/`는 있어도 **Flutter SDK 의존이 없으면 순수 Dart 패키지**이므로 Flutter로 확정하지 말고 모호로 처리한다(Step 0 규칙 3). 변환 대상 파일이 `android/`·`ios/` 하위 네이티브 코드로 명시된 경우에만 해당 네이티브 플랫폼으로 본다.
 
 | 플랫폼 | 판별 신호 | 프레임워크 분기 |
 |--------|-----------|------------------|
 | **Android** | `build.gradle(.kts)`, `AndroidManifest.xml`, `*.kt` | Compose(`@Composable`/`setContent`) → `references/android/compose.md` · XML(`*.xml` 레이아웃/`findViewById`) → `references/android/xml.md` |
 | **iOS** | `*.xcodeproj`/`*.xcworkspace`, `Package.swift`, `*.swift` | SwiftUI(`View`/`some View`/`@main App`) → `references/ios/swiftui.md` · UIKit(`UIViewController`/storyboard) → `references/ios/uikit.md` |
-| **Flutter** | 루트 `pubspec.yaml`, `lib/**/*.dart`, `pubspec.yaml` 내 `flutter:` 의존 | 단일(프레임워크 분기 없음) → `references/flutter/flutter.md` |
+| **Flutter** | 위 탐색으로 찾은 Flutter 루트의 `pubspec.yaml`, `lib/**/*.dart`, `pubspec.yaml` 내 `dependencies.flutter.sdk` | 단일(프레임워크 분기 없음) → `references/flutter/flutter.md` |
 
 ---
 
