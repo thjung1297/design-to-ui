@@ -95,19 +95,25 @@ if [ "$SVG_COUNT" -gt 0 ]; then
   mkdir -p "$ICONS_DIR"
   for f in "${svgs[@]}"; do
     base="${f##*/}"
+    stem="${base%.svg}"
+    case "$stem" in
+      ic_*) img_stem="img_${stem#ic_}" ;;
+      *)    img_stem="$stem" ;;
+    esac
     if is_genuine_svg "$f"; then
+      # 반대 방향 stale 정리: 같은 논리명이 이전 실행에서 오분류 래스터로 assets/images/에
+      # 남아있으면 제거한다(확장자를 몰라도 되도록 와일드카드 사용 — nullglob이라 매치 없으면 0개 인자).
+      rm -f "$IMAGES_MAIN_DIR/$img_stem".*
       cp "$f" "$ICONS_DIR/"
       SVG_PLACED=$((SVG_PLACED + 1))
     else
       ext=$(sniff_raster_ext "$f")
-      stem="${base%.svg}"
-      case "$stem" in
-        ic_*) newname="img_${stem#ic_}.$ext" ;;
-        *)    newname="$stem.$ext" ;;
-      esac
+      newname="$img_stem.$ext"
       mkdir -p "$IMAGES_MAIN_DIR"
-      # 반대 방향 stale 정리: 같은 논리명이 이전 실행에서 2.0x로 배치돼 있었으면 제거한다.
+      # 같은 방향(스케일 클래스) stale 정리: 이전 실행에서 2.0x로 배치돼 있었으면 제거한다.
       [ -f "$IMAGES_2X_DIR/$newname" ] && rm -f "$IMAGES_2X_DIR/$newname"
+      # 반대 방향 stale 정리: 같은 파일명이 이전 실행에서 진짜 SVG로 assets/icons/에 남아있으면 제거한다.
+      [ -f "$ICONS_DIR/$base" ] && rm -f "$ICONS_DIR/$base"
       cp "$f" "$IMAGES_MAIN_DIR/$newname"
       placed_main_png_names+=("$newname")
       misclassified_names+=("$base")
