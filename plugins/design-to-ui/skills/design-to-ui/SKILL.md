@@ -4,7 +4,7 @@ description: Figma 디자인을 네이티브 UI(Android Compose/XML, iOS SwiftUI
 license: Apache-2.0
 metadata:
   author: NAVER
-  version: "10.1"
+  version: "10.2"
   requires: [project-design-system, figma-asset-download]
   platform: [android, ios, flutter]
 ---
@@ -92,11 +92,6 @@ Figma MCP 서버와 연동하여 디자인 토큰을 올바르게 사용하고, 
 | **iOS** | `*.xcodeproj`/`*.xcworkspace`, `Package.swift`, `*.swift` | SwiftUI(`View`/`some View`/`@main App`) → `references/ios/swiftui.md` · UIKit(`UIViewController`/storyboard) → `references/ios/uikit.md` |
 | **Flutter** | 위 탐색으로 찾은 Flutter 루트의 `pubspec.yaml`, `lib/**/*.dart`, `pubspec.yaml` 내 `dependencies.flutter.sdk` | 단일(프레임워크 분기 없음) → `references/flutter/flutter.md` |
 
-**대상 화면이 이미 구현돼 있는가 (필수 확인 — 신호 표 판정 뒤, Step 1 전에):** design-to-ui는 **신규 화면 스캐폴딩용**이다. Figma 프레임 이름·주요 텍스트로 코드베이스를 검색해(라우트 정의, 화면 목록, 파일명) 같은 화면이 이미 구현돼 있는지 확인한다. 이미 있으면:
-- **design-to-ui(이 스킬)를 그대로 돌리지 않는다.** 실제 provider·라우팅·데이터 페칭에 연결된 기존 화면을 전체 재작성하면 기존 기능을 회귀시킬 위험이 있다(실측: "채용 캘린더" Figma 프레임이 이미 `RecruitmentCalendar` 위젯 + 실제 provider로 구현돼 있었음).
-- **`figma-diff-apply` 스킬로 전환할지 사용자에게 확인한다** — 그 스킬이 정확히 "변경된 컴포넌트만 최소 반영" 용도다.
-- 사용자가 그래도 design-to-ui 전체 스캐폴딩을 명시적으로 요구하면, **기존 컴포넌트·비즈니스 로직(provider 연동, 네비게이션, 데이터 파싱)은 재사용하고 구조/스타일 델타만 Figma 기준으로 갱신**한다(Step 6 "기존 컴포넌트 재사용" 원칙의 연장 — 전체 재작성이 아니라).
-
 ---
 
 ### Step 1: Node ID 추출
@@ -117,6 +112,11 @@ Figma URL에서 file key와 node ID를 추출합니다.
 > **표기 주의:** MCP 도구(`get_design_context` 등)는 **하이픈** 형식(`1234-5678`)을, 에셋 다운로드 스크립트는 **콜론** 형식(`1234:5678`)을 받는다. Step 5 다운로드 시 하이픈을 콜론으로 바꿔 전달한다.
 
 > ⚠️ **`get_design_context`는 페이지(canvas) 노드에서 호출 자체가 실패한다** — `node-id`가 canvas를 가리키면 (`focus-id`가 없거나 같은 경우 포함) Step 2로 바로 넘어가지 말고 먼저 `get_metadata(nodeId=<node-id>)`로 자식 프레임 목록을 확인해 실제 대상 프레임의 node ID를 찾는다(URL의 `focus-id`와 일치하는지도 대조). section 노드는 sparse metadata만 돌아온다.
+
+**대상 화면이 이미 구현돼 있는가 (Node ID 확정 직후 — Step 2 전에 확인):** design-to-ui는 **신규 화면 스캐폴딩용**이다. 위에서 확정한 node ID로 (아직 안 했다면 `get_metadata`를 호출해) 프레임 이름·주요 텍스트를 확인하고, 그 이름으로 코드베이스를 검색해(라우트 정의, 화면 목록, 파일명) 같은 화면이 이미 구현돼 있는지 확인한다. 이미 있으면:
+- **design-to-ui(이 스킬)를 그대로 돌리지 않는다.** 실제 provider·라우팅·데이터 페칭에 연결된 기존 화면을 전체 재작성하면 기존 기능을 회귀시킬 위험이 있다(실측: "채용 캘린더" Figma 프레임이 이미 `RecruitmentCalendar` 위젯 + 실제 provider로 구현돼 있었음).
+- **`figma-diff-apply`로 자동 전환하지 않는다.** 그 스킬은 `user-invocable: false`이고 `/figma-start`가 만든 `design/*` 브랜치 체크아웃을 전제하며 `platform: [android, flutter]`만 지원한다(`figma-diff-apply/SKILL.md` 5·11·20-23행) — 일반 design-to-ui 호출은 이 전제 중 무엇도 충족하지 않으므로 조건 없이 넘길 수 없다.
+- **대신 사용자에게 멈추고 확인한다:** (a) 대상이 Android/Flutter이고 이 작업이 디자이너 검수용 반복 수정이라면 `/figma-start`로 `design/*` 브랜치를 만든 뒤 `/figma-apply`(→ `figma-diff-apply`) 체인을 쓰도록 안내한다. (b) 그 조건이 아니면(iOS이거나 `design/*` 브랜치가 없는 일반 브랜치) design-to-ui로 계속할지 사용자에게 묻고, 계속하기로 하면 **기존 컴포넌트·비즈니스 로직(provider 연동, 네비게이션, 데이터 파싱)은 재사용하고 구조/스타일 델타만 Figma 기준으로 갱신**한다(Step 6 "기존 컴포넌트 재사용" 원칙의 연장 — 전체 재작성이 아니라).
 
 ---
 
